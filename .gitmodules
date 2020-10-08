@@ -1,0 +1,6 @@
+[submodule "thirdparty/tinyshader"]
+	path = thirdparty/tinyshader
+	url = git@github.com:felipeagc/tinyshader.git
+[submodule "thirdparty/rendergraph"]
+	path = thirdparty/rendergraph
+	url = git@github.com:felipeagc/rendergraph.git
