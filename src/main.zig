@@ -4,6 +4,7 @@ pub const c = @cImport({
     @cDefine("GLFW_INCLUDE_NONE", "1");
     @cInclude("tinyshader.h");
     @cInclude("rendergraph.h");
+    @cInclude("rendergraph_ext.h");
     @cInclude("GLFW/glfw3.h");
 });
 const Allocator = std.mem.Allocator;

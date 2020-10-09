@@ -11,11 +11,6 @@ pub const PipelineAsset = extern struct {
 
     pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
         const alloc = engine.alloc;
-        var self = try alloc.create(PipelineAsset);
-
-        self.* = PipelineAsset{
-            .engine = engine,
-        };
 
         var vert_spirv = try compileShaderAlloc(
             engine.alloc,
@@ -35,13 +30,33 @@ pub const PipelineAsset = extern struct {
 
         var options = try parsePipelineOptions(data);
 
+        var vert_shader = c.RgExtCompiledShader{
+            .code = &vert_spirv[0],
+            .code_size = vert_spirv.len,
+            .entry_point = "vertex",
+        };
+
+        var frag_shader = c.RgExtCompiledShader {
+            .code = &frag_spirv[0],
+            .code_size = frag_spirv.len,
+            .entry_point = "pixel",
+        };
+
+        var pipeline = c.rgExtPipelineCreateWithShaders(
+            engine.device, &vert_shader, &frag_shader, &options);
+
+        var self = try alloc.create(@This());
+        self.* = PipelineAsset{
+            .engine = engine,
+            .pipeline = pipeline,
+        };
         return self;
     }
 
     pub fn deinit(self_opaque: OpaqueAssetPtr) void {
         var self = @ptrCast(*PipelineAsset, self_opaque);
-        const alloc = self.engine.alloc;
-        alloc.destroy(self);
+        c.rgPipelineDestroy(self.engine.device, self.pipeline);
+        self.engine.alloc.destroy(self);
     }
 
     pub fn hash(self: *PipelineAsset) AssetHash {
