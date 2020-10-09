@@ -1,6 +1,4 @@
-const std = @import("std");
-const builtin = @import("builtin");
-const Allocator = std.mem.Allocator;
+pub const rg = @import("./rendergraph.zig");
 usingnamespace @import("./main.zig");
 
 pub const EngineError = error{InitFail};
@@ -11,25 +9,30 @@ pub extern fn glfwGetWin32Window(?*c.GLFWwindow) ?*c_void;
 
 pub const Engine = struct {
     alloc: *Allocator,
-    window: ?*c.GLFWwindow = null,
-    device: ?*rg.Device = null,
-    white_image: ?*rg.Image = null,
-    black_image: ?*rg.Image = null,
+    window: *c.GLFWwindow,
+    device: *rg.Device,
+    white_image: *rg.Image,
+    black_image: *rg.Image,
+    user_data: ?*c_void = null,
+    on_resize: ?fn(?*c_void, i32, i32) void = null,
 
     fn onResizeGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
         var self: *Engine = @ptrCast(*Engine, 
             @alignCast(@alignOf(*Engine), c.glfwGetWindowUserPointer(window)));
-        std.log.info("window resized", .{});
+
+        if (self.on_resize) |on_resize| {
+            on_resize(self.user_data, @as(i32, width), @as(i32, height));
+        }
     }
 
-    fn getWindowInfo(self: *Engine) rg.PlatformWindowInfo {
+    pub fn getWindowInfo(self: *Engine) !rg.PlatformWindowInfo {
         var window_info: rg.PlatformWindowInfo = .{.x11 = .{}, .win32 = .{}};
 
         if (builtin.os.tag == .windows) {
-            window_info.win32.window = glfwGetWin32Window(self.window);
+            window_info.win32.window = glfwGetWin32Window(self.window) orelse return error.InitFail;
         } else {
-            window_info.x11.window = glfwGetX11Window(self.window);
-            window_info.x11.display = glfwGetX11Display();
+            window_info.x11.window = glfwGetX11Window(self.window) orelse return error.InitFail;
+            window_info.x11.display = glfwGetX11Display() orelse return error.InitFail;
         }
 
         return window_info;
@@ -42,11 +45,13 @@ pub const Engine = struct {
             return error.InitFail;
         }
 
-        var window = c.glfwCreateWindow(800, 600, "Renderer", null, null);
+        c.glfwWindowHint(c.GLFW_CLIENT_API, c.GLFW_NO_API);
+        var window = c.glfwCreateWindow(800, 600, "Renderer", null, null)
+            orelse return error.InitFail;
         c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, self));
         _ = c.glfwSetWindowSizeCallback(window, onResizeGLFW);
 
-        var device = rg.deviceCreate();
+        var device = rg.deviceCreate() orelse return error.InitFail;
 
         var image_info = rg.ImageInfo{
             .width = 1,
@@ -57,8 +62,8 @@ pub const Engine = struct {
             .aspect = @enumToInt(rg.ImageAspect.Color),
         };
 
-        var white_image = rg.imageCreate(device, &image_info);
-        var black_image = rg.imageCreate(device, &image_info);
+        var white_image = rg.imageCreate(device, &image_info) orelse return error.InitFail;
+        var black_image = rg.imageCreate(device, &image_info) orelse return error.InitFail;
 
         var white_data = [_]u8{255, 255, 255, 255};
         rg.imageUpload(device, &rg.ImageCopy{
@@ -103,10 +108,12 @@ pub const Engine = struct {
         self.alloc.destroy(self);
     }
 
-    pub fn run(self: *Engine) !void {
-        while (c.glfwWindowShouldClose(self.window) == 0) {
-            c.glfwPollEvents();
-        }
+    pub fn shouldClose(self: *Engine) bool {
+        return c.glfwWindowShouldClose(self.window) != 0;
+    }
+
+    pub fn pollEvents(self: *Engine) void {
+        c.glfwPollEvents();
     }
 };
 

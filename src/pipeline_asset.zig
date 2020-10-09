@@ -1,13 +1,11 @@
-const std = @import("std");
-const mem = std.mem;
-const Allocator = std.mem.Allocator;
-const Sha1 = std.crypto.hash.Sha1;
-const ts = @import("tinyshader.zig");
 usingnamespace @import("./asset_manager.zig");
 usingnamespace @import("./engine.zig");
 usingnamespace @import("./main.zig");
 
-pub const PipelineAsset = extern struct {
+const Sha1 = std.crypto.hash.Sha1;
+const ts = @import("tinyshader.zig");
+
+pub const PipelineAsset = struct {
     engine: *Engine,
     pipeline: ?*rg.Pipeline = null,
     asset_hash: AssetHash,
@@ -188,30 +186,28 @@ fn parsePipelineOptions(shader_source: []const u8) !rg.PipelineInfo {
     while (iter.next()) |line| {
         if (mem.startsWith(u8, line, "#pragma")) {
             var iter2 = mem.split(line, " ");
-            _ = iter2.next();
-            var key = iter2.next();
-            var value = iter2.rest();
+            _ = iter2.next() orelse return error.InvalidPipelineParam;
+            var key = iter2.next() orelse return error.InvalidPipelineParam;
+            var value = iter2.next() orelse return error.InvalidPipelineParam;
 
-            if (key != null) {
-                if (mem.eql(u8, key.?, "blend")) {
-                    info.blend.enable = try boolFromString(value);
-                } else if (mem.eql(u8, key.?, "depth_test")) {
-                    info.depth_stencil.test_enable = try boolFromString(value);
-                } else if (mem.eql(u8, key.?, "depth_write")) {
-                    info.depth_stencil.write_enable = try boolFromString(value);
-                } else if (mem.eql(u8, key.?, "depth_bias")) {
-                    info.depth_stencil.bias_enable = try boolFromString(value);
-                } else if (mem.eql(u8, key.?, "topology")) {
-                    info.topology = try topologyFromString(value);
-                } else if (mem.eql(u8, key.?, "polygon_mode")) {
-                    info.polygon_mode = try polygonModeFromString(value);
-                } else if (mem.eql(u8, key.?, "cull_mode")) {
-                    info.cull_mode = try cullModeFromString(value);
-                } else if (mem.eql(u8, key.?, "front_face")) {
-                    info.front_face = try frontFaceFromString(value);
-                } else {
-                    return error.InvalidPipelineParam;
-                }
+            if (mem.eql(u8, key, "blend")) {
+                info.blend.enable = try boolFromString(value);
+            } else if (mem.eql(u8, key, "depth_test")) {
+                info.depth_stencil.test_enable = try boolFromString(value);
+            } else if (mem.eql(u8, key, "depth_write")) {
+                info.depth_stencil.write_enable = try boolFromString(value);
+            } else if (mem.eql(u8, key, "depth_bias")) {
+                info.depth_stencil.bias_enable = try boolFromString(value);
+            } else if (mem.eql(u8, key, "topology")) {
+                info.topology = try topologyFromString(value);
+            } else if (mem.eql(u8, key, "polygon_mode")) {
+                info.polygon_mode = try polygonModeFromString(value);
+            } else if (mem.eql(u8, key, "cull_mode")) {
+                info.cull_mode = try cullModeFromString(value);
+            } else if (mem.eql(u8, key, "front_face")) {
+                info.front_face = try frontFaceFromString(value);
+            } else {
+                return error.InvalidPipelineParam;
             }
         }
     }
