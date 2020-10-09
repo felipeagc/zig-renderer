@@ -1,6 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
 const Allocator = std.mem.Allocator;
+const Sha1 = std.crypto.hash.Sha1;
 usingnamespace @import("./asset_manager.zig");
 usingnamespace @import("./engine.zig");
 usingnamespace @import("./main.zig");
@@ -8,6 +9,7 @@ usingnamespace @import("./main.zig");
 pub const PipelineAsset = extern struct {
     engine: *Engine,
     pipeline: ?*c.RgPipeline = null,
+    asset_hash: AssetHash,
 
     pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
         const alloc = engine.alloc;
@@ -45,10 +47,14 @@ pub const PipelineAsset = extern struct {
         var pipeline = c.rgExtPipelineCreateWithShaders(
             engine.device, &vert_shader, &frag_shader, &options);
 
+        var asset_hash: AssetHash = undefined;
+        Sha1.hash(data, &asset_hash, .{});
+
         var self = try alloc.create(@This());
         self.* = PipelineAsset{
             .engine = engine,
             .pipeline = pipeline,
+            .asset_hash = asset_hash,
         };
         return self;
     }
@@ -60,7 +66,7 @@ pub const PipelineAsset = extern struct {
     }
 
     pub fn hash(self: *PipelineAsset) AssetHash {
-        return [_]u8{0} ** 32;
+        return self.asset_hash;
     }
 };
 
