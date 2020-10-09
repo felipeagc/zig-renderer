@@ -2,14 +2,12 @@ const std = @import("std");
 pub const c = @cImport({
     @cDefine("_NO_CRT_STDIO_INLINE", "1");
     @cDefine("GLFW_INCLUDE_NONE", "1");
-    @cInclude("tinyshader.h");
-    @cInclude("rendergraph.h");
-    @cInclude("rendergraph_ext.h");
     @cInclude("GLFW/glfw3.h");
 });
 const Allocator = std.mem.Allocator;
 const mem = std.mem;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
+pub const rg = @import("./rendergraph.zig");
 usingnamespace @import("./asset_manager.zig");
 usingnamespace @import("./pipeline_asset.zig");
 usingnamespace @import("./engine.zig");

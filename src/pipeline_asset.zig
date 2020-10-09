@@ -2,49 +2,40 @@ const std = @import("std");
 const mem = std.mem;
 const Allocator = std.mem.Allocator;
 const Sha1 = std.crypto.hash.Sha1;
+const ts = @import("tinyshader.zig");
 usingnamespace @import("./asset_manager.zig");
 usingnamespace @import("./engine.zig");
 usingnamespace @import("./main.zig");
 
 pub const PipelineAsset = extern struct {
     engine: *Engine,
-    pipeline: ?*c.RgPipeline = null,
+    pipeline: ?*rg.Pipeline = null,
     asset_hash: AssetHash,
 
     pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
         const alloc = engine.alloc;
 
-        var vert_spirv = try compileShaderAlloc(
-            engine.alloc,
-            "vertex",
-            c.enum_TsShaderStage.TS_SHADER_STAGE_VERTEX,
-            data,
-        );
+        var vert_spirv = try compileShaderAlloc(engine.alloc, "vertex", .Vertex, data);
         defer alloc.free(vert_spirv);
         
-        var frag_spirv = try compileShaderAlloc(
-            engine.alloc,
-            "pixel",
-            c.enum_TsShaderStage.TS_SHADER_STAGE_FRAGMENT,
-            data,
-        );
+        var frag_spirv = try compileShaderAlloc(engine.alloc, "pixel", .Fragment, data);
         defer alloc.free(frag_spirv);
 
         var options = try parsePipelineOptions(data);
 
-        var vert_shader = c.RgExtCompiledShader{
+        var vert_shader = rg.ExtCompiledShader{
             .code = &vert_spirv[0],
             .code_size = vert_spirv.len,
             .entry_point = "vertex",
         };
 
-        var frag_shader = c.RgExtCompiledShader {
+        var frag_shader = rg.ExtCompiledShader {
             .code = &frag_spirv[0],
             .code_size = frag_spirv.len,
             .entry_point = "pixel",
         };
 
-        var pipeline = c.rgExtPipelineCreateWithShaders(
+        var pipeline = rg.extPipelineCreateWithShaders(
             engine.device, &vert_shader, &frag_shader, &options);
 
         var asset_hash: AssetHash = undefined;
@@ -61,7 +52,7 @@ pub const PipelineAsset = extern struct {
 
     pub fn deinit(self_opaque: OpaqueAssetPtr) void {
         var self = @ptrCast(*PipelineAsset, self_opaque);
-        c.rgPipelineDestroy(self.engine.device, self.pipeline);
+        rg.pipelineDestroy(self.engine.device, self.pipeline);
         self.engine.alloc.destroy(self);
     }
 
@@ -78,12 +69,12 @@ pub const ShaderError = error{
 fn compileShaderAlloc(
     alloc: *Allocator,
     entry_point: [*:0]const u8,
-    stage: c.TsShaderStage,
+    stage: ts.ShaderStage,
     code: []const u8) ![]const u8 {
-    var compiler = c.tsCompilerCreate();
-    defer c.tsCompilerDestroy(compiler);
+    var compiler = ts.compilerCreate();
+    defer ts.compilerDestroy(compiler);
 
-    var input = c.TsCompilerInput{
+    var input = ts.CompilerInput{
         .path = null,
         .input = &code[0],
         .input_size = code.len,
@@ -91,64 +82,63 @@ fn compileShaderAlloc(
         .stage = stage,
     };
 
-    var output: c.TsCompilerOutput = undefined;
+    var output: ts.CompilerOutput = undefined;
+    defer ts.compilerOutputDestroy(&output);
 
-    c.tsCompile(compiler, &input, &output);
+    ts.compile(compiler, &input, &output);
 
-    if (output.@"error" != null) {
-        std.debug.print("Tinyshader error: {}\n", .{output.@"error"});
-        c.tsCompilerOutputDestroy(&output);
+    if (output.error_ != null) {
+        std.debug.print("Tinyshader error: {}\n", .{output.error_});
         return error.ShaderCompilationFailed;
     }
 
     var code_spv = try alloc.alloc(u8, output.spirv_byte_size);
     mem.copy(u8, code_spv, output.spirv[0..output.spirv_byte_size]);
 
-    c.tsCompilerOutputDestroy(&output);
     return code_spv;
 }
 
-fn polygonModeFromString(str: []const u8) !c.RgPolygonMode {
+fn polygonModeFromString(str: []const u8) !rg.PolygonMode {
     if (mem.eql(u8, str, "fill")) {
-        return @intToEnum(c.RgPolygonMode, c.RG_POLYGON_MODE_FILL);
+        return .Fill;
     } else if (mem.eql(u8, str, "line")) {
-        return @intToEnum(c.RgPolygonMode, c.RG_POLYGON_MODE_LINE);
+        return .Line;
     } else if (mem.eql(u8, str, "point")) {
-        return @intToEnum(c.RgPolygonMode, c.RG_POLYGON_MODE_POINT);
+        return .Point;
     } else {
         return error.InvalidPipelineParam;
     }
 }
 
-fn cullModeFromString(str: []const u8) !c.RgCullMode {
+fn cullModeFromString(str: []const u8) !rg.CullMode {
     if (mem.eql(u8, str, "none")) {
-        return @intToEnum(c.RgCullMode, c.RG_CULL_MODE_NONE);
+        return .None;
     } else if (mem.eql(u8, str, "back")) {
-        return @intToEnum(c.RgCullMode, c.RG_CULL_MODE_BACK);
+        return .Back;
     } else if (mem.eql(u8, str, "front")) {
-        return @intToEnum(c.RgCullMode, c.RG_CULL_MODE_FRONT);
+        return .Front;
     } else if (mem.eql(u8, str, "front_and_back")) {
-        return @intToEnum(c.RgCullMode, c.RG_CULL_MODE_FRONT_AND_BACK);
+        return .FrontAndBack;
     } else {
         return error.InvalidPipelineParam;
     }
 }
 
-fn frontFaceFromString(str: []const u8) !c.RgFrontFace {
+fn frontFaceFromString(str: []const u8) !rg.FrontFace {
     if (mem.eql(u8, str, "clockwise")) {
-        return @intToEnum(c.RgFrontFace, c.RG_FRONT_FACE_CLOCKWISE);
+        return .Clockwise;
     } else if (mem.eql(u8, str, "counter_clockwise")) {
-        return @intToEnum(c.RgFrontFace, c.RG_FRONT_FACE_COUNTER_CLOCKWISE);
+        return .CounterClockwise;
     } else {
         return error.InvalidPipelineParam;
     }
 }
 
-fn topologyFromString(str: []const u8) !c.RgPrimitiveTopology {
+fn topologyFromString(str: []const u8) !rg.PrimitiveTopology {
     if (mem.eql(u8, str, "triangle_list")) {
-        return @intToEnum(c.RgPrimitiveTopology, c.RG_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+        return .TriangleList;
     } else if (mem.eql(u8, str, "line_list")) {
-        return @intToEnum(c.RgPrimitiveTopology, c.RG_PRIMITIVE_TOPOLOGY_LINE_LIST);
+        return .LineList;
     } else {
         return error.InvalidPipelineParam;
     }
@@ -164,16 +154,16 @@ fn boolFromString(str: []const u8) !bool {
     }
 }
 
-fn parsePipelineOptions(shader_source: []const u8) !c.RgPipelineInfo {
-    var info = c.RgPipelineInfo{
-        .polygon_mode = @intToEnum(c.RgPolygonMode, c.RG_POLYGON_MODE_FILL),
-        .cull_mode = @intToEnum(c.RgCullMode, c.RG_CULL_MODE_NONE),
-        .front_face = @intToEnum(c.RgFrontFace, c.RG_FRONT_FACE_CLOCKWISE),
-        .topology = @intToEnum(c.RgPrimitiveTopology, c.RG_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
-        .blend = c.RgPipelineBlendState{
+fn parsePipelineOptions(shader_source: []const u8) !rg.PipelineInfo {
+    var info = rg.PipelineInfo{
+        .polygon_mode = .Fill,
+        .cull_mode = .None,
+        .front_face = .Clockwise,
+        .topology = .TriangleList,
+        .blend = rg.PipelineBlendState{
             .enable = false,
         },
-        .depth_stencil = c.RgPipelineDepthStencilState{
+        .depth_stencil = rg.PipelineDepthStencilState{
             .test_enable = false,
             .write_enable = false,
             .bias_enable = false,
