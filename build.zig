@@ -8,17 +8,23 @@ pub fn build(b: *Builder) !void {
     var gpa = GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
 
-    const target = b.standardTargetOptions(.{});
+    var target = b.standardTargetOptions(.{});
+    if (target.getOs().tag == .windows) {
+        target.abi = std.builtin.Abi.gnu;
+    }
     const mode = b.standardReleaseOptions();
 
     const exe = b.addExecutable("renderer", "src/main.zig");
     exe.setTarget(target);
+    if (target.getOs().tag == .windows) {
+        exe.subsystem = .Windows;
+    }
 
     exe.linkLibC();
-    exe.linkSystemLibrary("c++");
     exe.addIncludeDir("thirdparty/tinyshader/tinyshader");
     exe.addIncludeDir("thirdparty/rendergraph/rendergraph");
     exe.addIncludeDir("thirdparty/glfw/include");
+    exe.linkSystemLibrary("c++");
 
     if (target.getOs().tag == .linux) {
         exe.linkSystemLibrary("X11");
