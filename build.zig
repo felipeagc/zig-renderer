@@ -1,57 +1,74 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const mem = std.mem;
 const Builder = std.build.Builder;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 const ArrayList = std.ArrayList;
 
-pub fn build(b: *Builder) !void {
-    var gpa = GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+var target: std.zig.CrossTarget = undefined;
+var mode: builtin.Mode = undefined;
+var renderer_lib: *std.build.LibExeObjStep = undefined;
+var renderer_pkg = std.build.Pkg {
+    .name = "renderer",
+    .path = "src/main.zig",
+};
 
-    var target = b.standardTargetOptions(.{});
-    if (target.getOs().tag == .windows) {
-        target.abi = std.builtin.Abi.gnu;
-    }
-    const mode = b.standardReleaseOptions();
-
-    const exe = b.addExecutable("renderer", "src/main.zig");
+fn addExample(b: *Builder, comptime name: []const u8) !void {
+    const exe = b.addExecutable(name, "examples/" ++ name ++ ".zig");
+    exe.setBuildMode(mode);
     exe.setTarget(target);
     if (target.getOs().tag == .windows) {
         exe.subsystem = .Windows;
     }
 
-    exe.linkLibC();
-    exe.addIncludeDir("thirdparty/tinyshader/tinyshader");
-    exe.addIncludeDir("thirdparty/rendergraph/rendergraph");
     exe.addIncludeDir("thirdparty/glfw/include");
-    exe.linkSystemLibrary("c++");
-
-    if (target.getOs().tag == .linux) {
-        exe.linkSystemLibrary("X11");
-        exe.linkSystemLibrary("Xau");
-    }
-
-    if (target.getOs().tag == .windows) {
-        exe.linkSystemLibrary("gdi32");
-        exe.linkSystemLibrary("user32");
-        exe.linkSystemLibrary("ole32");
-        exe.linkSystemLibrary("oleaut32");
-        exe.linkSystemLibrary("advapi32");
-        exe.linkSystemLibrary("shlwapi");
-    }
-
-    exe.addCSourceFile("thirdparty/glfw/unity.c", &[_][]u8{});
-    exe.addCSourceFile("thirdparty/rendergraph/rendergraph/vk_mem_alloc.cpp", &[_][]const u8{"-w"});
-    exe.addCSourceFile("thirdparty/rendergraph/rendergraph/rendergraph.c", &[_][]u8{});
-    exe.addCSourceFile("thirdparty/rendergraph/rendergraph/rendergraph_ext.c", &[_][]u8{});
-    exe.addCSourceFile("thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
-
-    exe.setBuildMode(mode);
+    exe.addPackage(renderer_pkg);
+    exe.linkLibrary(renderer_lib);
     exe.install();
 
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
 
-    const run_step = b.step("run", "Run the app");
+    const run_step = b.step("run-" ++ name, "Run the example \"" ++ name ++ "\"");
     run_step.dependOn(&run_cmd.step);
+}
+
+pub fn build(b: *Builder) !void {
+    target = b.standardTargetOptions(.{});
+    if (target.getOs().tag == .windows) target.abi = std.builtin.Abi.gnu;
+    mode = b.standardReleaseOptions();
+
+    renderer_lib = b.addStaticLibrary("renderer", null);
+    renderer_lib.setTarget(target);
+    renderer_lib.setBuildMode(mode);
+
+    renderer_lib.linkLibC();
+    renderer_lib.linkSystemLibrary("c++");
+
+    if (target.getOs().tag == .linux) {
+        renderer_lib.linkSystemLibrary("X11");
+        renderer_lib.linkSystemLibrary("Xau");
+    }
+
+    if (target.getOs().tag == .windows) {
+        renderer_lib.linkSystemLibrary("gdi32");
+        renderer_lib.linkSystemLibrary("user32");
+        renderer_lib.linkSystemLibrary("ole32");
+        renderer_lib.linkSystemLibrary("oleaut32");
+        renderer_lib.linkSystemLibrary("advapi32");
+        renderer_lib.linkSystemLibrary("shlwapi");
+    }
+
+    renderer_lib.addCSourceFile(
+        "thirdparty/glfw/glfw_unity.c", &[_][]u8{});
+    renderer_lib.addCSourceFile(
+        "thirdparty/rendergraph/rendergraph/vk_mem_alloc.cpp", &[_][]const u8{"-w"});
+    renderer_lib.addCSourceFile(
+        "thirdparty/rendergraph/rendergraph/rendergraph.c", &[_][]u8{});
+    renderer_lib.addCSourceFile(
+        "thirdparty/rendergraph/rendergraph/rendergraph_ext.c", &[_][]u8{});
+    renderer_lib.addCSourceFile(
+        "thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
+
+    try addExample(b, "noise");
 }

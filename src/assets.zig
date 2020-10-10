@@ -1,7 +1,6 @@
-const std = @import("std");
+usingnamespace @import("./common.zig");
 const AutoHashMap = std.AutoHashMap;
-const Allocator = std.mem.Allocator;
-usingnamespace @import("./engine.zig");
+const Engine = @import("./Engine.zig").Engine;
 
 pub const AssetHash = [20]u8;
 

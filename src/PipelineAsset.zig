@@ -1,69 +1,64 @@
-usingnamespace @import("./asset_manager.zig");
-usingnamespace @import("./engine.zig");
-usingnamespace @import("./main.zig");
+usingnamespace @import("./common.zig");
+usingnamespace @import("./assets.zig");
+const Engine = @import("./Engine.zig").Engine;
 
 const Sha1 = std.crypto.hash.Sha1;
 const ts = @import("tinyshader.zig");
 
-pub const PipelineAsset = struct {
-    engine: *Engine,
-    pipeline: *rg.Pipeline = null,
-    asset_hash: AssetHash,
+pub const PipelineAsset = @This();
 
-    pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
-        const alloc = engine.alloc;
+engine: *Engine,
+pipeline: *rg.Pipeline = null,
+asset_hash: AssetHash,
 
-        var vert_spirv = try compileShaderAlloc(engine.alloc, "vertex", .Vertex, data);
-        defer alloc.free(vert_spirv);
-        
-        var frag_spirv = try compileShaderAlloc(engine.alloc, "pixel", .Fragment, data);
-        defer alloc.free(frag_spirv);
+pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
+    const alloc = engine.alloc;
 
-        var options = try parsePipelineOptions(data);
+    var vert_spirv = try compileShaderAlloc(engine.alloc, "vertex", .Vertex, data);
+    defer alloc.free(vert_spirv);
+    
+    var frag_spirv = try compileShaderAlloc(engine.alloc, "pixel", .Fragment, data);
+    defer alloc.free(frag_spirv);
 
-        var vert_shader = rg.ExtCompiledShader{
-            .code = &vert_spirv[0],
-            .code_size = vert_spirv.len,
-            .entry_point = "vertex",
-        };
+    var options = try parsePipelineOptions(data);
 
-        var frag_shader = rg.ExtCompiledShader {
-            .code = &frag_spirv[0],
-            .code_size = frag_spirv.len,
-            .entry_point = "pixel",
-        };
+    var vert_shader = rg.ExtCompiledShader{
+        .code = &vert_spirv[0],
+        .code_size = vert_spirv.len,
+        .entry_point = "vertex",
+    };
 
-        var pipeline = rg.extPipelineCreateWithShaders(
-            engine.device, &vert_shader, &frag_shader, &options) 
-            orelse return error.ShaderCompilationFailed;
+    var frag_shader = rg.ExtCompiledShader {
+        .code = &frag_spirv[0],
+        .code_size = frag_spirv.len,
+        .entry_point = "pixel",
+    };
 
-        var asset_hash: AssetHash = undefined;
-        Sha1.hash(data, &asset_hash, .{});
+    var pipeline = rg.extPipelineCreateWithShaders(
+        engine.device, &vert_shader, &frag_shader, &options) 
+        orelse return error.ShaderCompilationFailed;
 
-        var self = try alloc.create(@This());
-        self.* = PipelineAsset{
-            .engine = engine,
-            .pipeline = pipeline,
-            .asset_hash = asset_hash,
-        };
-        return self;
-    }
+    var asset_hash: AssetHash = undefined;
+    Sha1.hash(data, &asset_hash, .{});
 
-    pub fn deinit(self_opaque: OpaqueAssetPtr) void {
-        var self = @ptrCast(*PipelineAsset, self_opaque);
-        rg.pipelineDestroy(self.engine.device, self.pipeline);
-        self.engine.alloc.destroy(self);
-    }
+    var self = try alloc.create(@This());
+    self.* = PipelineAsset{
+        .engine = engine,
+        .pipeline = pipeline,
+        .asset_hash = asset_hash,
+    };
+    return self;
+}
 
-    pub fn hash(self: *PipelineAsset) AssetHash {
-        return self.asset_hash;
-    }
-};
+pub fn deinit(self_opaque: OpaqueAssetPtr) void {
+    var self = @ptrCast(*PipelineAsset, self_opaque);
+    rg.pipelineDestroy(self.engine.device, self.pipeline);
+    self.engine.alloc.destroy(self);
+}
 
-pub const ShaderError = error{
-    ShaderCompilationFailed,
-    InvalidPipelineParam,
-};
+pub fn hash(self: *PipelineAsset) AssetHash {
+    return self.asset_hash;
+}
 
 fn compileShaderAlloc(
     alloc: *Allocator,
