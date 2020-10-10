@@ -35,19 +35,16 @@ pub const App = struct {
         var graph = rg.graphCreate(engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
             orelse return error.InitFail;
 
-        var depth_info = rg.ResourceInfo{
-            .type_ = .DepthStencilAttachment,
+        var depth_res = rg.graphAddResource(graph, &rg.ResourceInfo{
+            .type = .DepthStencilAttachment,
             .info = .{
                 .image = .{
-                    .width = 0,
-                    .height = 0,
-                    .usage = 0,
-                    .aspect = 0,
-                    .format = .D24UnormS8Uint
+                    .usage = @enumToInt(rg.ImageUsage.DepthStencilAttachment),
+                    .aspect = @enumToInt(rg.ImageAspect.Depth) | @enumToInt(rg.ImageAspect.Stencil),
+                    .format = .D24UnormS8Uint,
                 }
             }
-        };
-        var depth_res = rg.graphAddResource(graph, &depth_info) orelse return error.InitFail;
+        }) orelse return error.InitFail;
 
         var main_pass = rg.graphAddPass(graph, mainPassCallback) orelse return error.InitFail;
         rg.graphAddPassOutput(main_pass, depth_res);

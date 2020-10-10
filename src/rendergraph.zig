@@ -211,10 +211,29 @@ pub const ResourceType = extern enum(c_int) {
     _,
 };
 
+pub const GraphImageScalingMode = extern enum(c_int) {
+    Relative = 0,
+    Absolute = 1,
+    _,
+};
+
+pub const GraphImageInfo = extern struct {
+    scaling_mode: GraphImageScalingMode = .Relative,
+    width: f32 = 1.0,
+    height: f32 = 1.0,
+    depth: u32 = 1,
+    sample_count: u32 = 1,
+    mip_count: u32 = 1,
+    layer_count: u32 = 1,
+    usage: Flags,
+    aspect: Flags,
+    format: Format,
+};
+
 pub const ResourceInfo = extern struct {
-    type_: ResourceType,
+    type: ResourceType,
     info: extern union {
-        image: ImageInfo,
+        image: GraphImageInfo,
         buffer: BufferInfo,
     },
 };
@@ -232,14 +251,14 @@ pub const Extent3D = extern struct {
 };
 
 pub const ImageCopy = extern struct {
-    image: ?*Image,
+    image: *Image,
     mip_level: u32,
     array_layer: u32,
     offset: Offset3D,
 };
 
 pub const BufferCopy = extern struct {
-    buffer: ?*Buffer,
+    buffer: *Buffer,
     offset: usize,
     row_length: u32,
     image_height: u32,
@@ -250,193 +269,193 @@ pub fn deviceCreate() ?*Device {
     return rgDeviceCreate();
 }
 
-pub extern fn rgDeviceDestroy(device: ?*Device) void;
-pub fn deviceDestroy(device: ?*Device) void {
+pub extern fn rgDeviceDestroy(device: *Device) void;
+pub fn deviceDestroy(device: *Device) void {
     return rgDeviceDestroy(device);
 }
 
-pub extern fn rgImageCreate(device: ?*Device, info: *const ImageInfo) ?*Image;
-pub fn imageCreate(device: ?*Device, info: *const ImageInfo) ?*Image {
+pub extern fn rgImageCreate(device: *Device, info: *const ImageInfo) ?*Image;
+pub fn imageCreate(device: *Device, info: *const ImageInfo) ?*Image {
     return rgImageCreate(device, info);
 }
 
-pub extern fn rgImageDestroy(device: ?*Device, image: ?*Image) void;
-pub fn imageDestroy(device: ?*Device, image: ?*Image) void {
+pub extern fn rgImageDestroy(device: *Device, image: *Image) void;
+pub fn imageDestroy(device: *Device, image: *Image) void {
     return rgImageDestroy(device, image);
 }
 
-pub extern fn rgImageUpload(device: ?*Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: ?*c_void) void;
-pub fn imageUpload(device: ?*Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: ?*c_void) void {
+pub extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *c_void) void;
+pub fn imageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *c_void) void {
     return rgImageUpload(device, dst, extent, size, data);
 }
 
-pub extern fn rgSamplerCreate(device: ?*Device, info: *const SamplerInfo) ?*Sampler;
-pub fn samplerCreate(device: ?*Device, info: *const SamplerInfo) ?*Sampler {
+pub extern fn rgSamplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler;
+pub fn samplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler {
     return rgSamplerCreate(device, info);
 }
 
-pub extern fn rgSamplerDestroy(device: ?*Device, sampler: ?*Sampler) void;
-pub fn samplerDestroy(device: ?*Device, sampler: ?*Sampler) void {
+pub extern fn rgSamplerDestroy(device: *Device, sampler: *Sampler) void;
+pub fn samplerDestroy(device: *Device, sampler: *Sampler) void {
     return rgSamplerDestroy(device, sampler);
 }
 
-pub extern fn rgBufferCreate(device: ?*Device, info: *const BufferInfo) ?*Buffer;
-pub fn bufferCreate(device: ?*Device, info: *const BufferInfo) ?*Buffer {
+pub extern fn rgBufferCreate(device: *Device, info: *const BufferInfo) ?*Buffer;
+pub fn bufferCreate(device: *Device, info: *const BufferInfo) ?*Buffer {
     return rgBufferCreate(device, info);
 }
 
-pub extern fn rgBufferDestroy(device: ?*Device, buffer: ?*Buffer) void;
-pub fn bufferDestroy(device: ?*Device, buffer: ?*Buffer) void {
+pub extern fn rgBufferDestroy(device: *Device, buffer: *Buffer) void;
+pub fn bufferDestroy(device: *Device, buffer: *Buffer) void {
     return rgBufferDestroy(device, buffer);
 }
 
-pub extern fn rgBufferMap(device: ?*Device, buffer: ?*Buffer) ?*c_void;
-pub fn bufferMap(device: ?*Device, buffer: ?*Buffer) ?*c_void {
+pub extern fn rgBufferMap(device: *Device, buffer: *Buffer) ?*c_void;
+pub fn bufferMap(device: *Device, buffer: *Buffer) ?*c_void {
     return rgBufferMap(device, buffer);
 }
 
-pub extern fn rgBufferUnmap(device: ?*Device, buffer: ?*Buffer) void;
-pub fn bufferUnmap(device: ?*Device, buffer: ?*Buffer) void {
+pub extern fn rgBufferUnmap(device: *Device, buffer: *Buffer) void;
+pub fn bufferUnmap(device: *Device, buffer: *Buffer) void {
     return rgBufferUnmap(device, buffer);
 }
 
-pub extern fn rgBufferUpload(device: ?*Device, buffer: ?*Buffer, offset: usize, size: usize, data: ?*c_void) void;
-pub fn bufferUpload(device: ?*Device, buffer: ?*Buffer, offset: usize, size: usize, data: ?*c_void) void {
+pub extern fn rgBufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: usize, data: *c_void) void;
+pub fn bufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: usize, data: *c_void) void {
     return rgBufferUpload(device, buffer, offset, size, data);
 }
 
-pub extern fn rgPipelineCreate(device: ?*Device, info: *const PipelineInfo) ?*Pipeline;
-pub fn pipelineCreate(device: ?*Device, info: *const PipelineInfo) ?*Pipeline {
+pub extern fn rgPipelineCreate(device: *Device, info: *const PipelineInfo) ?*Pipeline;
+pub fn pipelineCreate(device: *Device, info: *const PipelineInfo) ?*Pipeline {
     return rgPipelineCreate(device, info);
 }
 
-pub extern fn rgPipelineDestroy(device: ?*Device, pipeline: ?*Pipeline) void;
-pub fn pipelineDestroy(device: ?*Device, pipeline: ?*Pipeline) void {
+pub extern fn rgPipelineDestroy(device: *Device, pipeline: *Pipeline) void;
+pub fn pipelineDestroy(device: *Device, pipeline: *Pipeline) void {
     return rgPipelineDestroy(device, pipeline);
 }
 
-pub extern fn rgGraphCreate(device: ?*Device, user_data: ?*c_void, window: *const PlatformWindowInfo) ?*Graph;
-pub fn graphCreate(device: ?*Device, user_data: ?*c_void, window: *const PlatformWindowInfo) ?*Graph {
+pub extern fn rgGraphCreate(device: *Device, user_data: ?*c_void, window: *const PlatformWindowInfo) ?*Graph;
+pub fn graphCreate(device: *Device, user_data: ?*c_void, window: *const PlatformWindowInfo) ?*Graph {
     return rgGraphCreate(device, user_data, window);
 }
 
-pub extern fn rgGraphAddPass(graph: ?*Graph, callback: ?PassCallback) ?*Pass;
-pub fn graphAddPass(graph: ?*Graph, callback: ?PassCallback) ?*Pass {
+pub extern fn rgGraphAddPass(graph: *Graph, callback: PassCallback) ?*Pass;
+pub fn graphAddPass(graph: *Graph, callback: PassCallback) ?*Pass {
     return rgGraphAddPass(graph, callback);
 }
 
-pub extern fn rgGraphAddResource(graph: ?*Graph, info: *const ResourceInfo) ?*Resource;
-pub fn graphAddResource(graph: ?*Graph, info: *const ResourceInfo) ?*Resource {
+pub extern fn rgGraphAddResource(graph: *Graph, info: *const ResourceInfo) ?*Resource;
+pub fn graphAddResource(graph: *Graph, info: *const ResourceInfo) ?*Resource {
     return rgGraphAddResource(graph, info);
 }
 
-pub extern fn rgGraphAddPassInput(pass: ?*Pass, resource: ?*Resource) void;
-pub fn graphAddPassInput(pass: ?*Pass, resource: ?*Resource) void {
+pub extern fn rgGraphAddPassInput(pass: *Pass, resource: *Resource) void;
+pub fn graphAddPassInput(pass: *Pass, resource: *Resource) void {
     return rgGraphAddPassInput(pass, resource);
 }
 
-pub extern fn rgGraphAddPassOutput(pass: ?*Pass, resource: ?*Resource) void;
-pub fn graphAddPassOutput(pass: ?*Pass, resource: ?*Resource) void {
+pub extern fn rgGraphAddPassOutput(pass: *Pass, resource: *Resource) void;
+pub fn graphAddPassOutput(pass: *Pass, resource: *Resource) void {
     return rgGraphAddPassOutput(pass, resource);
 }
 
-pub extern fn rgGraphBuild(graph: ?*Graph) void;
-pub fn graphBuild(graph: ?*Graph) void {
+pub extern fn rgGraphBuild(graph: *Graph) void;
+pub fn graphBuild(graph: *Graph) void {
     return rgGraphBuild(graph);
 }
 
-pub extern fn rgGraphDestroy(graph: ?*Graph) void;
-pub fn graphDestroy(graph: ?*Graph) void {
+pub extern fn rgGraphDestroy(graph: *Graph) void;
+pub fn graphDestroy(graph: *Graph) void {
     return rgGraphDestroy(graph);
 }
 
-pub extern fn rgGraphResize(graph: ?*Graph) void;
-pub fn graphResize(graph: ?*Graph) void {
+pub extern fn rgGraphResize(graph: *Graph) void;
+pub fn graphResize(graph: *Graph) void {
     return rgGraphResize(graph);
 }
 
-pub extern fn rgGraphExecute(graph: ?*Graph) void;
-pub fn graphExecute(graph: ?*Graph) void {
+pub extern fn rgGraphExecute(graph: *Graph) void;
+pub fn graphExecute(graph: *Graph) void {
     return rgGraphExecute(graph);
 }
 
-pub extern fn rgCmdBindPipeline(cb: ?*CmdBuffer, pipeline: ?*Pipeline) void;
-pub fn cmdBindPipeline(cb: ?*CmdBuffer, pipeline: ?*Pipeline) void {
+pub extern fn rgCmdBindPipeline(cb: *CmdBuffer, pipeline: *Pipeline) void;
+pub fn cmdBindPipeline(cb: *CmdBuffer, pipeline: *Pipeline) void {
     return rgCmdBindPipeline(cb, pipeline);
 }
 
-pub extern fn rgCmdBindImage(cb: ?*CmdBuffer, binding: u32, set: u32, image: ?*Image) void;
-pub fn cmdBindImage(cb: ?*CmdBuffer, binding: u32, set: u32, image: ?*Image) void {
+pub extern fn rgCmdBindImage(cb: *CmdBuffer, binding: u32, set: u32, image: *Image) void;
+pub fn cmdBindImage(cb: *CmdBuffer, binding: u32, set: u32, image: *Image) void {
     return rgCmdBindImage(cb, binding, set, image);
 }
 
-pub extern fn rgCmdBindSampler(cb: ?*CmdBuffer, binding: u32, set: u32, sampler: ?*Sampler) void;
-pub fn cmdBindSampler(cb: ?*CmdBuffer, binding: u32, set: u32, sampler: ?*Sampler) void {
+pub extern fn rgCmdBindSampler(cb: *CmdBuffer, binding: u32, set: u32, sampler: *Sampler) void;
+pub fn cmdBindSampler(cb: *CmdBuffer, binding: u32, set: u32, sampler: *Sampler) void {
     return rgCmdBindSampler(cb, binding, set, sampler);
 }
 
-pub extern fn rgCmdBindImageSampler(cb: ?*CmdBuffer, binding: u32, set: u32, image: ?*Image, sampler: ?*Sampler) void;
-pub fn cmdBindImageSampler(cb: ?*CmdBuffer, binding: u32, set: u32, image: ?*Image, sampler: ?*Sampler) void {
+pub extern fn rgCmdBindImageSampler(cb: *CmdBuffer, binding: u32, set: u32, image: *Image, sampler: *Sampler) void;
+pub fn cmdBindImageSampler(cb: *CmdBuffer, binding: u32, set: u32, image: *Image, sampler: *Sampler) void {
     return rgCmdBindImageSampler(cb, binding, set, image, sampler);
 }
 
-pub extern fn rgCmdBindVertexBuffer(cb: ?*CmdBuffer, buffer: ?*Buffer, offset: usize) void;
-pub fn cmdBindVertexBuffer(cb: ?*CmdBuffer, buffer: ?*Buffer, offset: usize) void {
+pub extern fn rgCmdBindVertexBuffer(cb: *CmdBuffer, buffer: *Buffer, offset: usize) void;
+pub fn cmdBindVertexBuffer(cb: *CmdBuffer, buffer: *Buffer, offset: usize) void {
     return rgCmdBindVertexBuffer(cb, buffer, offset);
 }
 
-pub extern fn rgCmdBindIndexBuffer(cb: ?*CmdBuffer, index_type: IndexType, buffer: ?*Buffer, offset: usize) void;
-pub fn cmdBindIndexBuffer(cb: ?*CmdBuffer, index_type: IndexType, buffer: ?*Buffer, offset: usize) void {
+pub extern fn rgCmdBindIndexBuffer(cb: *CmdBuffer, index_type: IndexType, buffer: *Buffer, offset: usize) void;
+pub fn cmdBindIndexBuffer(cb: *CmdBuffer, index_type: IndexType, buffer: *Buffer, offset: usize) void {
     return rgCmdBindIndexBuffer(cb, index_type, buffer, offset);
 }
 
-pub extern fn rgCmdSetUniform(cb: ?*CmdBuffer, binding: u32, set: u32, size: usize, data: ?*c_void) void;
-pub fn cmdSetUniform(cb: ?*CmdBuffer, binding: u32, set: u32, size: usize, data: ?*c_void) void {
+pub extern fn rgCmdSetUniform(cb: *CmdBuffer, binding: u32, set: u32, size: usize, data: *c_void) void;
+pub fn cmdSetUniform(cb: *CmdBuffer, binding: u32, set: u32, size: usize, data: *c_void) void {
     return rgCmdSetUniform(cb, binding, set, size, data);
 }
 
-pub extern fn rgCmdSetVertices(cb: ?*CmdBuffer, size: usize, data: ?*c_void) void;
-pub fn cmdSetVertices(cb: ?*CmdBuffer, size: usize, data: ?*c_void) void {
+pub extern fn rgCmdSetVertices(cb: *CmdBuffer, size: usize, data: *c_void) void;
+pub fn cmdSetVertices(cb: *CmdBuffer, size: usize, data: *c_void) void {
     return rgCmdSetVertices(cb, size, data);
 }
 
-pub extern fn rgCmdSetIndices(cb: ?*CmdBuffer, index_type: IndexType, size: usize, data: ?*c_void) void;
-pub fn cmdSetIndices(cb: ?*CmdBuffer, index_type: IndexType, size: usize, data: ?*c_void) void {
+pub extern fn rgCmdSetIndices(cb: *CmdBuffer, index_type: IndexType, size: usize, data: *c_void) void;
+pub fn cmdSetIndices(cb: *CmdBuffer, index_type: IndexType, size: usize, data: *c_void) void {
     return rgCmdSetIndices(cb, index_type, size, data);
 }
 
-pub extern fn rgCmdDraw(cb: ?*CmdBuffer, vertex_count: u32, instance_count: u32, first_vertex: u32, first_instance: u32) void;
-pub fn cmdDraw(cb: ?*CmdBuffer, vertex_count: u32, instance_count: u32, first_vertex: u32, first_instance: u32) void {
+pub extern fn rgCmdDraw(cb: *CmdBuffer, vertex_count: u32, instance_count: u32, first_vertex: u32, first_instance: u32) void;
+pub fn cmdDraw(cb: *CmdBuffer, vertex_count: u32, instance_count: u32, first_vertex: u32, first_instance: u32) void {
     return rgCmdDraw(cb, vertex_count, instance_count, first_vertex, first_instance);
 }
 
-pub extern fn rgCmdDrawIndexed(cb: ?*CmdBuffer, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void;
-pub fn cmdDrawIndexed(cb: ?*CmdBuffer, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void {
+pub extern fn rgCmdDrawIndexed(cb: *CmdBuffer, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void;
+pub fn cmdDrawIndexed(cb: *CmdBuffer, index_count: u32, instance_count: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void {
     return rgCmdDrawIndexed(cb, index_count, instance_count, first_index, vertex_offset, first_instance);
 }
 
-pub extern fn rgCmdDispatch(cb: ?*CmdBuffer, group_count_x: u32, group_count_y: u32, group_count_z: u32) void;
-pub fn cmdDispatch(cb: ?*CmdBuffer, group_count_x: u32, group_count_y: u32, group_count_z: u32) void {
+pub extern fn rgCmdDispatch(cb: *CmdBuffer, group_count_x: u32, group_count_y: u32, group_count_z: u32) void;
+pub fn cmdDispatch(cb: *CmdBuffer, group_count_x: u32, group_count_y: u32, group_count_z: u32) void {
     return rgCmdDispatch(cb, group_count_x, group_count_y, group_count_z);
 }
 
-pub extern fn rgCmdCopyBufferToBuffer(cb: ?*CmdBuffer, src: ?*Buffer, src_offset: usize, dst: ?*Buffer, dst_offset: usize, size: usize) void;
-pub fn cmdCopyBufferToBuffer(cb: ?*CmdBuffer, src: ?*Buffer, src_offset: usize, dst: ?*Buffer, dst_offset: usize, size: usize) void {
+pub extern fn rgCmdCopyBufferToBuffer(cb: *CmdBuffer, src: *Buffer, src_offset: usize, dst: *Buffer, dst_offset: usize, size: usize) void;
+pub fn cmdCopyBufferToBuffer(cb: *CmdBuffer, src: *Buffer, src_offset: usize, dst: *Buffer, dst_offset: usize, size: usize) void {
     return rgCmdCopyBufferToBuffer(cb, src, src_offset, dst, dst_offset, size);
 }
 
-pub extern fn rgCmdCopyBufferToImage(cb: ?*CmdBuffer, src: *const BufferCopy, dst: *const ImageCopy, extent: Extent3D) void;
-pub fn cmdCopyBufferToImage(cb: ?*CmdBuffer, src: *const BufferCopy, dst: *const ImageCopy, extent: Extent3D) void {
+pub extern fn rgCmdCopyBufferToImage(cb: *CmdBuffer, src: *const BufferCopy, dst: *const ImageCopy, extent: Extent3D) void;
+pub fn cmdCopyBufferToImage(cb: *CmdBuffer, src: *const BufferCopy, dst: *const ImageCopy, extent: Extent3D) void {
     return rgCmdCopyBufferToImage(cb, src, dst, extent);
 }
 
-pub extern fn rgCmdCopyImageToBuffer(cb: ?*CmdBuffer, src: *const ImageCopy, dst: *const BufferCopy, extent: Extent3D) void;
-pub fn cmdCopyImageToBuffer(cb: ?*CmdBuffer, src: *const ImageCopy, dst: *const BufferCopy, extent: Extent3D) void {
+pub extern fn rgCmdCopyImageToBuffer(cb: *CmdBuffer, src: *const ImageCopy, dst: *const BufferCopy, extent: Extent3D) void;
+pub fn cmdCopyImageToBuffer(cb: *CmdBuffer, src: *const ImageCopy, dst: *const BufferCopy, extent: Extent3D) void {
     return rgCmdCopyImageToBuffer(cb, src, dst, extent);
 }
 
-pub extern fn rgCmdCopyImageToImage(cb: ?*CmdBuffer, src: *const ImageCopy, dst: *const ImageCopy, extent: Extent3D) void;
-pub fn cmdCopyImageToImage(cb: ?*CmdBuffer, src: *const ImageCopy, dst: *const ImageCopy, extent: Extent3D) void {
+pub extern fn rgCmdCopyImageToImage(cb: *CmdBuffer, src: *const ImageCopy, dst: *const ImageCopy, extent: Extent3D) void;
+pub fn cmdCopyImageToImage(cb: *CmdBuffer, src: *const ImageCopy, dst: *const ImageCopy, extent: Extent3D) void {
     return rgCmdCopyImageToImage(cb, src, dst, extent);
 }
 
@@ -450,7 +469,7 @@ pub const ExtCompiledShader = extern struct {
     entry_point: [*c]const u8,
 };
 
-pub extern fn rgExtPipelineCreateWithShaders(device: ?*Device, vertex_shader: [*c]ExtCompiledShader, fragment_shader: [*c]ExtCompiledShader, info: [*c]PipelineInfo) ?*Pipeline;
-pub fn extPipelineCreateWithShaders(device: ?*Device, vertex_shader: [*c]ExtCompiledShader, fragment_shader: [*c]ExtCompiledShader, info: [*c]PipelineInfo) ?*Pipeline {
+pub extern fn rgExtPipelineCreateWithShaders(device: *Device, vertex_shader: [*c]ExtCompiledShader, fragment_shader: [*c]ExtCompiledShader, info: [*c]PipelineInfo) ?*Pipeline;
+pub fn extPipelineCreateWithShaders(device: *Device, vertex_shader: [*c]ExtCompiledShader, fragment_shader: [*c]ExtCompiledShader, info: [*c]PipelineInfo) ?*Pipeline {
     return rgExtPipelineCreateWithShaders(device, vertex_shader, fragment_shader, info);
 }
