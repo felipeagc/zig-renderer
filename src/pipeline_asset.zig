@@ -7,7 +7,7 @@ const ts = @import("tinyshader.zig");
 
 pub const PipelineAsset = struct {
     engine: *Engine,
-    pipeline: ?*rg.Pipeline = null,
+    pipeline: *rg.Pipeline = null,
     asset_hash: AssetHash,
 
     pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
@@ -34,7 +34,8 @@ pub const PipelineAsset = struct {
         };
 
         var pipeline = rg.extPipelineCreateWithShaders(
-            engine.device, &vert_shader, &frag_shader, &options);
+            engine.device, &vert_shader, &frag_shader, &options) 
+            orelse return error.ShaderCompilationFailed;
 
         var asset_hash: AssetHash = undefined;
         Sha1.hash(data, &asset_hash, .{});
@@ -86,7 +87,7 @@ fn compileShaderAlloc(
     ts.compile(compiler, &input, &output);
 
     if (output.error_ != null) {
-        std.debug.print("Tinyshader error: {}\n", .{output.error_});
+        std.debug.print("Tinyshader error:\n{s}\n", .{output.error_});
         return error.ShaderCompilationFailed;
     }
 

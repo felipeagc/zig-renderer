@@ -40,6 +40,7 @@ pub const Engine = struct {
 
     pub fn init(alloc: *Allocator) !*Engine {
         var self = try alloc.create(Engine);
+        errdefer alloc.destroy(self);
 
         if (c.glfwInit() != c.GLFW_TRUE) {
             return error.InitFail;
@@ -114,6 +115,17 @@ pub const Engine = struct {
 
     pub fn pollEvents(self: *Engine) void {
         c.glfwPollEvents();
+    }
+
+    pub fn getTime(self: *Engine) f64 {
+        return c.glfwGetTime();
+    }
+
+    pub fn getWindowSize(self: *Engine) struct{width: i32, height: i32} {
+        var width: c_int = undefined;
+        var height: c_int = undefined;
+        c.glfwGetFramebufferSize(self.window, &width, &height);
+        return .{.width = @as(i32, width), .height = @as(i32, height)};
     }
 };
 

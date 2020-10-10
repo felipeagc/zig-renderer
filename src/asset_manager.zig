@@ -26,6 +26,7 @@ pub const AssetManager = struct {
     pub fn init(engine: *Engine) !*AssetManager {
         var alloc = engine.alloc;
         var self = try alloc.create(AssetManager);
+        errdefer alloc.destroy(self);
         
         self.* = AssetManager{
             .alloc = engine.alloc,
