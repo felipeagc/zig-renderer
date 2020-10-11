@@ -27,9 +27,11 @@ pub fn init(allocator: *Allocator) !*App {
     var asset_manager = try AssetManager.init(engine);
     errdefer asset_manager.deinit();
 
-    var pipeline = try asset_manager.load(PipelineAsset, @embedFile("../shaders/fullscreen.hlsl"));
+    var pipeline = try asset_manager.load(
+        PipelineAsset, @embedFile("../shaders/fullscreen.hlsl"));
 
-    var graph = rg.graphCreate(engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
+    var graph = rg.graphCreate(
+        engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
         orelse return error.InitFail;
 
     var depth_res = rg.graphAddResource(graph, &rg.ResourceInfo{
@@ -37,14 +39,30 @@ pub fn init(allocator: *Allocator) !*App {
         .info = .{
             .image = .{
                 .usage = @enumToInt(rg.ImageUsage.DepthStencilAttachment),
-                .aspect = @enumToInt(rg.ImageAspect.Depth) | @enumToInt(rg.ImageAspect.Stencil),
+                .aspect = @enumToInt(rg.ImageAspect.Depth) 
+                    | @enumToInt(rg.ImageAspect.Stencil),
                 .format = .D24UnormS8Uint,
             }
         }
-    }) orelse return error.InitFail;
+    });
 
-    var main_pass = rg.graphAddPass(graph, mainPassCallback) orelse return error.InitFail;
-    rg.graphAddPassOutput(main_pass, depth_res);
+    var color_res = rg.graphAddResource(graph, &rg.ResourceInfo{
+        .type = .ColorAttachment,
+        .info = .{
+            .image = .{
+                .usage = @enumToInt(rg.ImageUsage.ColorAttachment),
+                .aspect = @enumToInt(rg.ImageAspect.Color),
+                .format = .Rgba8Unorm,
+            }
+        }
+    });
+
+    var main_pass = rg.graphAddPass(graph, mainPassCallback);
+    rg.graphAddPassOutput(graph, main_pass, color_res);
+    rg.graphAddPassOutput(graph, main_pass, depth_res);
+
+    var backbuffer_pass = rg.graphAddPass(graph, backbufferPassCallback);
+    rg.graphAddPassInput(graph, main_pass, color_res);
 
     rg.graphBuild(graph);
 
@@ -62,7 +80,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
 
     const UniformType = extern struct {
-        res: [2]f32,
+        res: Vec2,
         time: f32,
     };
 
@@ -70,12 +88,23 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 
     var uniform = UniformType{
         .time = @floatCast(f32, self.engine.getTime() * 5.0),
-        .res = [2]f32{@intToFloat(f32, window_size.width), @intToFloat(f32, window_size.height)},
+        .res = Vec2.init(
+            @intToFloat(f32, window_size.width),
+            @intToFloat(f32, window_size.height),
+        ),
     };
 
     rg.cmdSetUniform(cb, 0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
     rg.cmdBindPipeline(cb, self.pipeline.pipeline);
     rg.cmdDraw(cb, 3, 1, 0, 0);
+}
+
+fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+
+    // rg.cmdSetUniform(cb, 0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
+    // rg.cmdBindPipeline(cb, self.pipeline.pipeline);
+    // rg.cmdDraw(cb, 3, 1, 0, 0);
 }
 
 pub fn run(self: *App) !void {

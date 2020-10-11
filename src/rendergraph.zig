@@ -5,11 +5,17 @@ pub const Image = opaque {};
 pub const Sampler = opaque {};
 pub const CmdBuffer = opaque {};
 pub const Graph = opaque {};
-pub const Pass = opaque {};
 pub const Node = opaque {};
-pub const Resource = opaque {};
 pub const Flags = u32;
 pub const PassCallback = fn(*c_void, *CmdBuffer) callconv(.C) void;
+
+pub const ResourceRef = extern struct {
+    index: u32
+};
+
+pub const PassRef = extern struct {
+    index: u32
+};
 
 pub const PlatformWindowInfo = extern struct {
     x11: extern struct {
@@ -339,24 +345,24 @@ pub fn graphCreate(device: *Device, user_data: ?*c_void, window: *const Platform
     return rgGraphCreate(device, user_data, window);
 }
 
-pub extern fn rgGraphAddPass(graph: *Graph, callback: PassCallback) ?*Pass;
-pub fn graphAddPass(graph: *Graph, callback: PassCallback) ?*Pass {
+pub extern fn rgGraphAddPass(graph: *Graph, callback: PassCallback) PassRef;
+pub fn graphAddPass(graph: *Graph, callback: PassCallback) PassRef {
     return rgGraphAddPass(graph, callback);
 }
 
-pub extern fn rgGraphAddResource(graph: *Graph, info: *const ResourceInfo) ?*Resource;
-pub fn graphAddResource(graph: *Graph, info: *const ResourceInfo) ?*Resource {
+pub extern fn rgGraphAddResource(graph: *Graph, info: *const ResourceInfo) ResourceRef;
+pub fn graphAddResource(graph: *Graph, info: *const ResourceInfo) ResourceRef {
     return rgGraphAddResource(graph, info);
 }
 
-pub extern fn rgGraphAddPassInput(pass: *Pass, resource: *Resource) void;
-pub fn graphAddPassInput(pass: *Pass, resource: *Resource) void {
-    return rgGraphAddPassInput(pass, resource);
+pub extern fn rgGraphAddPassInput(graph: *Graph, pass: PassRef, resource: ResourceRef) void;
+pub fn graphAddPassInput(graph: *Graph, pass: PassRef, resource: ResourceRef) void {
+    return rgGraphAddPassInput(graph, pass, resource);
 }
 
-pub extern fn rgGraphAddPassOutput(pass: *Pass, resource: *Resource) void;
-pub fn graphAddPassOutput(pass: *Pass, resource: *Resource) void {
-    return rgGraphAddPassOutput(pass, resource);
+pub extern fn rgGraphAddPassOutput(graph: *Graph, pass: PassRef, resource: ResourceRef) void;
+pub fn graphAddPassOutput(graph: *Graph, pass: PassRef, resource: ResourceRef) void {
+    return rgGraphAddPassOutput(graph, pass, resource);
 }
 
 pub extern fn rgGraphBuild(graph: *Graph) void;
