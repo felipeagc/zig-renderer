@@ -385,6 +385,16 @@ pub fn graphExecute(graph: *Graph) void {
     return rgGraphExecute(graph);
 }
 
+pub extern fn rgGraphGetBuffer(graph: *Graph, res: ResourceRef) *Buffer;
+pub fn graphGetBuffer(graph: *Graph, res: ResourceRef) *Buffer {
+    return rgGraphGetBuffer(graph, res);
+}
+
+pub extern fn rgGraphGetImage(graph: *Graph, res: ResourceRef) *Image;
+pub fn graphGetImage(graph: *Graph, res: ResourceRef) *Image {
+    return rgGraphGetImage(graph, res);
+}
+
 pub extern fn rgCmdBindPipeline(cb: *CmdBuffer, pipeline: *Pipeline) void;
 pub fn cmdBindPipeline(cb: *CmdBuffer, pipeline: *Pipeline) void {
     return rgCmdBindPipeline(cb, pipeline);

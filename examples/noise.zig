@@ -1,4 +1,5 @@
 usingnamespace @import("renderer");
+
 pub const App = @This();
 
 allocator: *Allocator,
@@ -6,6 +7,7 @@ engine: *Engine,
 asset_manager: *AssetManager,
 pipeline: *PipelineAsset,
 graph: *rg.Graph,
+noise_attachment: rg.ResourceRef,
 
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
@@ -58,11 +60,11 @@ pub fn init(allocator: *Allocator) !*App {
     });
 
     var main_pass = rg.graphAddPass(graph, mainPassCallback);
-    rg.graphAddPassOutput(graph, main_pass, color_res);
+    // rg.graphAddPassOutput(graph, main_pass, color_res);
     rg.graphAddPassOutput(graph, main_pass, depth_res);
 
-    var backbuffer_pass = rg.graphAddPass(graph, backbufferPassCallback);
-    rg.graphAddPassInput(graph, main_pass, color_res);
+    // var backbuffer_pass = rg.graphAddPass(graph, backbufferPassCallback);
+    // rg.graphAddPassInput(graph, main_pass, color_res);
 
     rg.graphBuild(graph);
 
@@ -72,6 +74,7 @@ pub fn init(allocator: *Allocator) !*App {
         .asset_manager = asset_manager,
         .pipeline = pipeline,
         .graph = graph,
+        .noise_attachment = color_res,
     };
     return self;
 }
