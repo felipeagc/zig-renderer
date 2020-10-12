@@ -54,15 +54,20 @@ pub const AssetManager = struct {
         }.VT;
 
         var asset_obj: *T = try T.init(self.engine, data);
+        var hash = asset_obj.hash();
 
-        var asset = Asset{
-            .vt = vt,
-            .obj = asset_obj,
-        };
+        if (self.map.contains(hash)) {
+            std.log.info("found duplicate asset: {x}", .{hash});
 
-        std.log.info("loaded asset: {x}", .{asset_obj.hash()});
+            T.deinit(@ptrCast(OpaqueAssetPtr, asset_obj));
+            return @ptrCast(*T, self.map.get(hash).?.obj);
+        }
 
-        try self.map.put(asset_obj.hash(), asset);
+        var asset = Asset{.vt = vt, .obj = asset_obj};
+
+        std.log.info("loaded asset: {x}", .{hash});
+
+        try self.map.put(hash, asset);
         return asset_obj;
     }
 };
