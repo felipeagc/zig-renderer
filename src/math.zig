@@ -16,79 +16,79 @@ pub const Vec2 = extern struct {
     x: f32,
     y: f32,
 
-    pub fn init(x: f32, y: f32) Vec2 {
+    pub inline fn init(x: f32, y: f32) Vec2 {
         return Vec2{.x = x, .y = y};
     }
 
-    pub fn single(v: f32) Self {
+    pub inline fn single(v: f32) Self {
         return Self{.x = v, .y = v};
     }
 
-    pub fn add(lhs: Self, rhs: Self) Self {
+    pub inline fn add(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x + rhs.x,
             .y = lhs.y + rhs.y,
         };
     }
 
-    pub fn sub(lhs: Self, rhs: Self) Self {
+    pub inline fn sub(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x - rhs.x,
             .y = lhs.y - rhs.y,
         };
     }
 
-    pub fn mul(lhs: Self, rhs: Self) Self {
+    pub inline fn mul(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x * rhs.x,
             .y = lhs.y * rhs.y,
         };
     }
 
-    pub fn div(lhs: Self, rhs: Self) Self {
+    pub inline fn div(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x / rhs.x,
             .y = lhs.y / rhs.y,
         };
     }
 
-    pub fn sadd(lhs: Self, rhs: f32) Self {
+    pub inline fn sadd(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x + rhs,
             .y = lhs.y + rhs,
         };
     }
 
-    pub fn ssub(lhs: Self, rhs: f32) Self {
+    pub inline fn ssub(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x - rhs,
             .y = lhs.y - rhs,
         };
     }
 
-    pub fn smul(lhs: Self, rhs: f32) Self {
+    pub inline fn smul(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x * rhs,
             .y = lhs.y * rhs,
         };
     }
 
-    pub fn sdiv(lhs: Self, rhs: f32) Self {
+    pub inline fn sdiv(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x / rhs,
             .y = lhs.y / rhs,
         };
     }
 
-    pub fn dot(lhs: Self, rhs: Self) f32 {
+    pub inline fn dot(lhs: Self, rhs: Self) f32 {
         return lhs.x * rhs.x + lhs.y * rhs.y;
     }
 
-    pub fn norm(lhs: Self) f32 {
+    pub inline fn norm(lhs: Self) f32 {
         return sqrt(dot(lhs, lhs));
     }
 
-    pub fn normalize(lhs: Self) Self {
+    pub inline fn normalize(lhs: Self) Self {
         return sdiv(lhs, norm(lhs));
     }
 };
@@ -100,15 +100,15 @@ pub const Vec3 = extern struct {
 
     const Self = @This();
 
-    pub fn init(x: f32, y: f32, z: f32) Self {
+    pub inline fn init(x: f32, y: f32, z: f32) Self {
         return Self{.x = x, .y = y, .z = z};
     }
 
-    pub fn single(v: f32) Self {
+    pub inline fn single(v: f32) Self {
         return Self{.x = v, .y = v, .z = v};
     }
 
-    pub fn add(lhs: Self, rhs: Self) Self {
+    pub inline fn add(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x + rhs.x,
             .y = lhs.y + rhs.y,
@@ -116,7 +116,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn sub(lhs: Self, rhs: Self) Self {
+    pub inline fn sub(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x - rhs.x,
             .y = lhs.y - rhs.y,
@@ -124,7 +124,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn mul(lhs: Self, rhs: Self) Self {
+    pub inline fn mul(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x * rhs.x,
             .y = lhs.y * rhs.y,
@@ -132,7 +132,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn div(lhs: Self, rhs: Self) Self {
+    pub inline fn div(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x / rhs.x,
             .y = lhs.y / rhs.y,
@@ -140,7 +140,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn sadd(lhs: Self, rhs: f32) Self {
+    pub inline fn sadd(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x + rhs,
             .y = lhs.y + rhs,
@@ -148,7 +148,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn ssub(lhs: Self, rhs: f32) Self {
+    pub inline fn ssub(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x - rhs,
             .y = lhs.y - rhs,
@@ -156,7 +156,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn smul(lhs: Self, rhs: f32) Self {
+    pub inline fn smul(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x * rhs,
             .y = lhs.y * rhs,
@@ -164,7 +164,7 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn sdiv(lhs: Self, rhs: f32) Self {
+    pub inline fn sdiv(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x / rhs,
             .y = lhs.y / rhs,
@@ -172,21 +172,19 @@ pub const Vec3 = extern struct {
         };
     }
 
-    pub fn dot(lhs: Self, rhs: Self) f32 {
-        return lhs.x * rhs.x 
-            + lhs.y * rhs.y 
-            + lhs.z * rhs.z;
+    pub inline fn dot(lhs: Self, rhs: Self) f32 {
+        return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
     }
 
-    pub fn norm(lhs: Self) f32 {
+    pub inline fn norm(lhs: Self) f32 {
         return sqrt(dot(lhs, lhs));
     }
 
-    pub fn normalize(lhs: Self) Self {
+    pub inline fn normalize(lhs: Self) Self {
         return sdiv(lhs, norm(lhs));
     }
 
-    pub fn cross(lhs: Self, rhs: Self) Self {
+    pub inline fn cross(lhs: Self, rhs: Self) Self {
         return Self{
             .x = (lhs.y * rhs.z) - (lhs.z * rhs.y),
             .y = (lhs.z * rhs.x) - (lhs.x * rhs.z),
@@ -206,15 +204,15 @@ pub const Vec4 = extern struct {
     pub const zero = Vec4.init(0, 0, 0, 0);
     pub const one = Vec4.single(1);
 
-    pub fn init(x: f32, y: f32, z: f32, w: f32) Self {
+    pub inline fn init(x: f32, y: f32, z: f32, w: f32) Self {
         return Self{.x = x, .y = y, .z = z, .w = w};
     }
 
-    pub fn single(v: f32) Self {
+    pub inline fn single(v: f32) Self {
         return Self{.x = v, .y = v, .z = v, .w = v};
     }
 
-    pub fn add(lhs: Self, rhs: Self) Self {
+    pub inline fn add(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x + rhs.x,
             .y = lhs.y + rhs.y,
@@ -223,7 +221,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn sub(lhs: Self, rhs: Self) Self {
+    pub inline fn sub(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x - rhs.x,
             .y = lhs.y - rhs.y,
@@ -232,7 +230,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn mul(lhs: Self, rhs: Self) Self {
+    pub inline fn mul(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x * rhs.x,
             .y = lhs.y * rhs.y,
@@ -241,7 +239,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn div(lhs: Self, rhs: Self) Self {
+    pub inline fn div(lhs: Self, rhs: Self) Self {
         return Self{
             .x = lhs.x / rhs.x,
             .y = lhs.y / rhs.y,
@@ -250,7 +248,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn sadd(lhs: Self, rhs: f32) Self {
+    pub inline fn sadd(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x + rhs,
             .y = lhs.y + rhs,
@@ -259,7 +257,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn ssub(lhs: Self, rhs: f32) Self {
+    pub inline fn ssub(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x - rhs,
             .y = lhs.y - rhs,
@@ -268,7 +266,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn smul(lhs: Self, rhs: f32) Self {
+    pub inline fn smul(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x * rhs,
             .y = lhs.y * rhs,
@@ -277,7 +275,7 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn sdiv(lhs: Self, rhs: f32) Self {
+    pub inline fn sdiv(lhs: Self, rhs: f32) Self {
         return Self{
             .x = lhs.x / rhs,
             .y = lhs.y / rhs,
@@ -286,25 +284,26 @@ pub const Vec4 = extern struct {
         };
     }
 
-    pub fn dot(lhs: Self, rhs: Self) f32 {
+    pub inline fn dot(lhs: Self, rhs: Self) f32 {
         return lhs.x * rhs.x 
             + lhs.y * rhs.y 
             + lhs.z * rhs.z
             + lhs.w * rhs.w;
     }
 
-    pub fn norm(lhs: Self) f32 {
+    pub inline fn norm(lhs: Self) f32 {
         return sqrt(dot(lhs, lhs));
     }
 
-    pub fn normalize(lhs: Self) Self {
+    pub inline fn normalize(lhs: Self) Self {
         return sdiv(lhs, norm(lhs));
     }
 };
 
 pub const Mat4 = extern struct {
-    cols: [4]std.meta.Vector(4, f32),
+    cols: [4]ColType,
 
+    const ColType = std.meta.Vector(4, f32);
     const Self = @This();
 
     pub const identity = diagonal(1);
@@ -430,6 +429,84 @@ pub const Mat4 = extern struct {
         result.cols[3][2] = f.dot(eye);
         return result;
     }
+
+    pub fn translation(pos: Vec3) Self {
+        return Mat4{
+            .cols = .{
+                .{ 1,     0,     0,     0 },
+                .{ 0,     1,     0,     0 },
+                .{ 0,     0,     1,     0 },
+                .{ pos.x, pos.y, pos.z, 1 },
+            },
+        };
+    }
+
+    pub fn scaling(vec: Vec3) Self {
+        return Mat4{
+            .cols = .{
+                .{ vec.x, 0,     0,     0 },
+                .{ 0,     vec.y, 0,     0 },
+                .{ 0,     0,     vec.z, 0 },
+                .{ 0,     0,     0,     1 },
+            }
+        };
+    }
+
+    pub fn translate(rhs: Self, vec: Vec3) Self {
+        return Self.translation(vec).mul(rhs);
+    }
+
+    pub fn scale(rhs: Self, vec: Vec3) Self {
+        return Self.scaling(vec).mul(rhs);
+    }
+
+    inline fn smulCol(col: ColType, v: f32) ColType {
+        return ColType{
+            col[0] * v,
+            col[1] * v,
+            col[2] * v,
+            col[3] * v,
+        };
+    }
+
+    pub fn rotate(mat: Mat4, angle: f32, axis: Vec3) Self {
+        var c = cos(angle);
+        var s = sin(angle);
+
+        var norm_axis = axis.normalize();
+        var temp = norm_axis.smul(1 - c);
+
+        var rot = Mat4.zero;
+        rot.cols[0][0] = c + temp.x * norm_axis.x;
+        rot.cols[0][1] = temp.x * norm_axis.y + s * norm_axis.z;
+        rot.cols[0][2] = temp.x * norm_axis.z - s * norm_axis.y;
+
+        rot.cols[1][0] = temp.y * norm_axis.x - s * norm_axis.z;
+        rot.cols[1][1] = c + temp.y * norm_axis.y;
+        rot.cols[1][2] = temp.y * norm_axis.z + s * norm_axis.x;
+
+        rot.cols[2][0] = temp.z * norm_axis.x + s * norm_axis.y;
+        rot.cols[2][1] = temp.z * norm_axis.y - s * norm_axis.x;
+        rot.cols[2][2] = c + temp.z * norm_axis.z;
+
+        return Mat4{
+            .cols = .{
+                smulCol(mat.cols[0], rot.cols[0][0]) +
+                smulCol(mat.cols[1], rot.cols[0][1]) +
+                smulCol(mat.cols[2], rot.cols[0][2]),
+
+                smulCol(mat.cols[0], rot.cols[1][0]) +
+                smulCol(mat.cols[1], rot.cols[1][1]) +
+                smulCol(mat.cols[2], rot.cols[1][2]),
+
+                smulCol(mat.cols[0], rot.cols[2][0]) +
+                smulCol(mat.cols[1], rot.cols[2][1]) +
+                smulCol(mat.cols[2], rot.cols[2][2]),
+
+                mat.cols[3],
+            },
+        };
+    }
 };
 
 test "vec" {
@@ -482,4 +559,10 @@ test "mat4" {
     expectEqual(v2.y, rv1.y);
     expectEqual(v2.z, rv1.z);
     expectEqual(v2.w, rv1.w);
+}
+
+test "rotate" {
+    var m = Mat4.identity;
+    var new = m.rotate(20, Vec3.init(1, 0, 0)).translate(Vec3.init(1, 2, 3)).scale(Vec3.init(2, 2, 2));
+    _ = Mat4.lookAt(Vec3.single(0), Vec3.single(0), Vec3.single(0));
 }
