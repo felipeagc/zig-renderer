@@ -4,17 +4,13 @@ const Engine = @import("./Engine.zig").Engine;
 
 pub const AssetHash = [20]u8;
 
-pub const OpaqueAssetPtr = *align(8)c_void;
-
-pub const AssetDeinitFn = fn(self: OpaqueAssetPtr) void;
-
 pub const AssetVT = struct {
-    deinit: AssetDeinitFn,
+    deinit: fn(self: *c_void) void,
 };
 
 pub const Asset = extern struct {
     vt: *const AssetVT,
-    obj: OpaqueAssetPtr,
+    obj: *c_void,
 };
 
 pub const AssetManager = struct {
@@ -59,8 +55,8 @@ pub const AssetManager = struct {
         if (self.map.contains(hash)) {
             std.log.info("found duplicate asset: {x}", .{hash});
 
-            T.deinit(@ptrCast(OpaqueAssetPtr, asset_obj));
-            return @ptrCast(*T, self.map.get(hash).?.obj);
+            T.deinit(@ptrCast(*c_void, asset_obj));
+            return @ptrCast(*T, @alignCast(@alignOf(T), self.map.get(hash).?.obj));
         }
 
         var asset = Asset{.vt = vt, .obj = asset_obj};

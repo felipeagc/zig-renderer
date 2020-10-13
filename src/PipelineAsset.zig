@@ -50,8 +50,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
     return self;
 }
 
-pub fn deinit(self_opaque: OpaqueAssetPtr) void {
-    var self = @ptrCast(*PipelineAsset, self_opaque);
+pub fn deinit(self_opaque: *c_void) void {
+    var self = @ptrCast(*PipelineAsset, @alignCast(@alignOf(@This()), self_opaque));
     self.engine.device.destroyPipeline(self.pipeline);
     self.engine.alloc.destroy(self);
 }
