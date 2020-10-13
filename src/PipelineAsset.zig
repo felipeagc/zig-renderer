@@ -52,7 +52,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
 
 pub fn deinit(self_opaque: OpaqueAssetPtr) void {
     var self = @ptrCast(*PipelineAsset, self_opaque);
-    rg.pipelineDestroy(self.engine.device, self.pipeline);
+    self.engine.device.destroyPipeline(self.pipeline);
     self.engine.alloc.destroy(self);
 }
 

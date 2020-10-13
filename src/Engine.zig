@@ -56,22 +56,21 @@ pub fn init(alloc: *Allocator) !*Engine {
     c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, self));
     _ = c.glfwSetWindowSizeCallback(window, onResizeGLFW);
 
-    var device = rg.deviceCreate() orelse return error.InitFail;
+    var device = rg.Device.create() orelse return error.InitFail;
 
     var image_info = rg.ImageInfo{
         .width = 1,
         .height = 1,
-        .usage = @enumToInt(rg.ImageUsage.Sampled)
-            | @enumToInt(rg.ImageUsage.TransferDst),
+        .usage = rg.ImageUsage.Sampled | rg.ImageUsage.TransferDst,
         .format = .Rgba8Unorm,
-        .aspect = @enumToInt(rg.ImageAspect.Color),
+        .aspect = rg.ImageAspect.Color,
     };
 
-    var white_image = rg.imageCreate(device, &image_info) orelse return error.InitFail;
-    var black_image = rg.imageCreate(device, &image_info) orelse return error.InitFail;
+    var white_image = device.createImage(&image_info) orelse return error.InitFail;
+    var black_image = device.createImage(&image_info) orelse return error.InitFail;
 
     var white_data = [_]u8{255, 255, 255, 255};
-    rg.imageUpload(device, &rg.ImageCopy{
+    device.uploadImage(&rg.ImageCopy{
             .image = white_image,
             .mip_level = 0,
             .array_layer = 0,
@@ -82,7 +81,7 @@ pub fn init(alloc: *Allocator) !*Engine {
         &white_data[0]);
 
     var black_data = [_]u8{0, 0, 0, 255};
-    rg.imageUpload(device, &rg.ImageCopy{
+    device.uploadImage(&rg.ImageCopy{
             .image = white_image,
             .mip_level = 0,
             .array_layer = 0,
@@ -107,9 +106,9 @@ pub fn deinit(self: *Engine) void {
     c.glfwDestroyWindow(self.window);
     c.glfwTerminate();
 
-    rg.imageDestroy(self.device, self.white_image);
-    rg.imageDestroy(self.device, self.black_image);
-    rg.deviceDestroy(self.device);
+    self.device.destroyImage(self.white_image);
+    self.device.destroyImage(self.black_image);
+    self.device.destroy();
     self.alloc.destroy(self);
 }
 

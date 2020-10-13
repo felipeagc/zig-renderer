@@ -14,7 +14,7 @@ sampler: *rg.Sampler,
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
-    rg.graphResize(self.graph);
+    self.graph.resize();
 
     std.log.info("window resized", .{});
 }
@@ -37,30 +37,30 @@ pub fn init(allocator: *Allocator) !*App {
     var post_pipeline = try asset_manager.load(
         PipelineAsset, @embedFile("../shaders/post.hlsl"));
 
-    var graph = rg.graphCreate(
+    var graph = rg.Graph.create(
         engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
         orelse return error.InitFail;
 
-    var depth_res = rg.graphAddImage(graph, &rg.GraphImageInfo{
-        .aspect = @enumToInt(rg.ImageAspect.Depth) | @enumToInt(rg.ImageAspect.Stencil),
+    var depth_res = graph.addImage(&rg.GraphImageInfo{
+        .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
         .format = .D24UnormS8Uint,
     });
 
-    var color_res = rg.graphAddImage(graph, &rg.GraphImageInfo{
-        .aspect = @enumToInt(rg.ImageAspect.Color),
+    var color_res = graph.addImage(&rg.GraphImageInfo{
+        .aspect = rg.ImageAspect.Color,
         .format = .Rgba8Unorm,
     });
 
-    var main_pass = rg.graphAddPass(graph, mainPassCallback);
-    rg.graphAddPassOutput(graph, main_pass, color_res, .ColorAttachment);
-    rg.graphAddPassOutput(graph, main_pass, depth_res, .DepthStencilAttachment);
+    var main_pass = graph.addPass(mainPassCallback);
+    graph.addPassOutput(main_pass, color_res, .ColorAttachment);
+    graph.addPassOutput(main_pass, depth_res, .DepthStencilAttachment);
 
-    var backbuffer_pass = rg.graphAddPass(graph, backbufferPassCallback);
-    rg.graphAddPassInput(graph, main_pass, color_res, .Sampled);
+    var backbuffer_pass = graph.addPass(backbufferPassCallback);
+    graph.addPassInput(main_pass, color_res, .Sampled);
 
-    rg.graphBuild(graph);
+    graph.build();
 
-    var sampler = rg.samplerCreate(engine.device, &rg.SamplerInfo{
+    var sampler = engine.device.createSampler(&rg.SamplerInfo{
         .mag_filter = rg.Filter.Linear,
         .min_filter = rg.Filter.Linear,
         .address_mode = rg.SamplerAddressMode.Repeat,
@@ -82,8 +82,8 @@ pub fn init(allocator: *Allocator) !*App {
 
 
 pub fn deinit(self: *App) void {
-    rg.samplerDestroy(self.engine.device, self.sampler);
-    rg.graphDestroy(self.graph);
+    self.engine.device.destroySampler(self.sampler);
+    self.graph.destroy();
     self.asset_manager.deinit();
     self.engine.deinit();
     self.allocator.destroy(self);
@@ -107,26 +107,26 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
         ),
     };
 
-    rg.cmdSetUniform(cb, 0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
-    rg.cmdBindPipeline(cb, self.noise_pipeline.pipeline);
-    rg.cmdDraw(cb, 3, 1, 0, 0);
+    cb.setUniform(0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
+    cb.bindPipeline(self.noise_pipeline.pipeline);
+    cb.draw(3, 1, 0, 0);
 }
 
 fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
 
-    var noise_img = rg.graphGetImage(self.graph, self.noise_image_res);
+    var noise_img = self.graph.getImage(self.noise_image_res);
 
-    rg.cmdBindImage(cb, 0, 0, noise_img);
-    rg.cmdBindSampler(cb, 1, 0, self.sampler);
-    rg.cmdBindPipeline(cb, self.post_pipeline.pipeline);
-    rg.cmdDraw(cb, 3, 1, 0, 0);
+    cb.bindImage(0, 0, noise_img);
+    cb.bindSampler(1, 0, self.sampler);
+    cb.bindPipeline(self.post_pipeline.pipeline);
+    cb.draw(3, 1, 0, 0);
 }
 
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
-        rg.graphExecute(self.graph);
+        self.graph.execute();
     }
 }
 
