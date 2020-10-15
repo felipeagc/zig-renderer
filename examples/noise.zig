@@ -13,7 +13,7 @@ sampler: *rg.Sampler,
 
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
     self.graph.resize();
 
     std.log.info("window resized", .{});
@@ -90,7 +90,7 @@ pub fn deinit(self: *App) void {
 }
 
 fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
 
     const UniformType = extern struct {
         res: Vec2,
@@ -113,7 +113,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 }
 
 fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
 
     var noise_img = self.graph.getImage(self.noise_image_res);
 

@@ -420,21 +420,21 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
                 switch (accessor.component_type)
                 {
                     .r_32u => {
-                        var buf = @ptrCast([*]u32, @alignCast(@alignOf([*]u32), data_ptr));
+                        var buf = @ptrCast([*]u32, @alignCast(@alignOf(u32), data_ptr));
                         for (new_indices) |*index_ptr, index| {
                             index_ptr.* = buf[index] + @intCast(u32, vertex_start);
                         }
                     },
 
                     .r_16u => {
-                        var buf = @ptrCast([*]u16, @alignCast(@alignOf([*]u16), data_ptr));
+                        var buf = @ptrCast([*]u16, @alignCast(@alignOf(u16), data_ptr));
                         for (new_indices) |*index_ptr, index| {
                             index_ptr.* = buf[index] + @intCast(u16, vertex_start);
                         }
                     },
 
                     .r_8u => {
-                        var buf = @ptrCast([*]u8, @alignCast(@alignOf([*]u8), data_ptr));
+                        var buf = @ptrCast([*]u8, @alignCast(@alignOf(u8), data_ptr));
                         for (new_indices) |*index_ptr, index| {
                             index_ptr.* = buf[index] + @intCast(u8, vertex_start);
                         }

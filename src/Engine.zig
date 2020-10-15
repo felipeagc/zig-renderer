@@ -23,7 +23,7 @@ on_resize: ?fn(?*c_void, i32, i32) void = null,
 
 fn onResizeGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
     var self: *Engine = @ptrCast(*Engine, 
-        @alignCast(@alignOf(*Engine), c.glfwGetWindowUserPointer(window)));
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
 
     if (self.on_resize) |on_resize| {
         on_resize(self.user_data, @as(i32, width), @as(i32, height));
