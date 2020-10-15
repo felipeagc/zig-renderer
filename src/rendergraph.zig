@@ -299,9 +299,9 @@ pub const ResourceInfo = extern struct {
 };
 
 pub const Offset3D = extern struct {
-    x: i32,
-    y: i32,
-    z: i32,
+    x: i32 = 0,
+    y: i32 = 0,
+    z: i32 = 0,
 };
 
 pub const Extent3D = extern struct {
@@ -312,9 +312,9 @@ pub const Extent3D = extern struct {
 
 pub const ImageCopy = extern struct {
     image: *Image,
-    mip_level: u32,
-    array_layer: u32,
-    offset: Offset3D,
+    mip_level: u32 = 0,
+    array_layer: u32 = 0,
+    offset: Offset3D = .{},
 };
 
 pub const BufferCopy = extern struct {

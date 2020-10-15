@@ -5,15 +5,21 @@ pub const App = @This();
 allocator: *Allocator,
 engine: *Engine,
 asset_manager: *AssetManager,
-noise_pipeline: *PipelineAsset,
-post_pipeline: *PipelineAsset,
+model_pipeline: *PipelineAsset,
 graph: *rg.Graph,
-noise_image_res: rg.ResourceRef,
-sampler: *rg.Sampler,
+
+model: *GltfAsset,
+camera: CameraUniform,
+
+const CameraUniform = extern struct {
+    pos: Vec4 = Vec4.init(0, 0, 0, 1),
+    view: Mat4 = Mat4.identity,
+    proj: Mat4 = Mat4.identity,
+};
 
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
     self.graph.resize();
 
     std.log.info("window resized", .{});
@@ -31,13 +37,10 @@ pub fn init(allocator: *Allocator) !*App {
     var asset_manager = try AssetManager.init(engine);
     errdefer asset_manager.deinit();
 
-    var noise_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/noise.hlsl"));
+    var model_pipeline = try asset_manager.load(
+        PipelineAsset, @embedFile("../shaders/model.hlsl"));
 
-    var post_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/post.hlsl"));
-
-    _ = try asset_manager.load(
+    var model = try asset_manager.load(
         GltfAsset, @embedFile("../assets/DamagedHelmet.glb"));
 
     var graph = rg.Graph.create(
@@ -49,43 +52,25 @@ pub fn init(allocator: *Allocator) !*App {
         .format = .D24UnormS8Uint,
     });
 
-    var color_res = graph.addImage(&rg.GraphImageInfo{
-        .aspect = rg.ImageAspect.Color,
-        .format = .Rgba8Unorm,
-    });
-
     var main_pass = graph.addPass(mainPassCallback);
-    graph.addPassOutput(main_pass, color_res, .ColorAttachment);
     graph.addPassOutput(main_pass, depth_res, .DepthStencilAttachment);
 
-    var backbuffer_pass = graph.addPass(backbufferPassCallback);
-    graph.addPassInput(main_pass, color_res, .Sampled);
-
     graph.build();
-
-    var sampler = engine.device.createSampler(&rg.SamplerInfo{
-        .mag_filter = rg.Filter.Linear,
-        .min_filter = rg.Filter.Linear,
-        .address_mode = rg.SamplerAddressMode.Repeat,
-        .border_color = rg.BorderColor.FloatTransparentBlack,
-    }) orelse return error.InitFail;
 
     self.* = .{
         .allocator = allocator,
         .engine = engine,
         .asset_manager = asset_manager,
-        .noise_pipeline = noise_pipeline,
-        .post_pipeline = post_pipeline,
+        .model_pipeline = model_pipeline,
         .graph = graph,
-        .noise_image_res = color_res,
-        .sampler = sampler,
+        .model = model,
+        .camera = .{},
     };
     return self;
 }
 
 
 pub fn deinit(self: *App) void {
-    self.engine.device.destroySampler(self.sampler);
     self.graph.destroy();
     self.asset_manager.deinit();
     self.engine.deinit();
@@ -93,7 +78,7 @@ pub fn deinit(self: *App) void {
 }
 
 fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
 
     const UniformType = extern struct {
         res: Vec2,
@@ -110,20 +95,10 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
         ),
     };
 
-    cb.setUniform(0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
-    cb.bindPipeline(self.noise_pipeline.pipeline);
-    cb.draw(3, 1, 0, 0);
-}
-
-fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(*App), user_data));
-
-    var noise_img = self.graph.getImage(self.noise_image_res);
-
-    cb.bindImage(0, 0, noise_img);
-    cb.bindSampler(1, 0, self.sampler);
-    cb.bindPipeline(self.post_pipeline.pipeline);
-    cb.draw(3, 1, 0, 0);
+    cb.bindPipeline(self.model_pipeline.pipeline);
+    cb.setUniform(0, 0, @sizeOf(@TypeOf(self.camera)), @ptrCast(*c_void, &self.camera));
+    
+    self.model.draw(cb, &Mat4.identity, 1, 2);
 }
 
 pub fn run(self: *App) !void {

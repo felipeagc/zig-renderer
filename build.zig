@@ -69,14 +69,15 @@ pub fn build(b: *Builder) !void {
         "thirdparty/rendergraph/rendergraph/rendergraph_ext.c", &[_][]u8{});
     renderer_lib.addCSourceFile(
         "thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/stb_image/stb_image.c", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/cgltf/cgltf.c", &[_][]u8{});
+    renderer_lib.disable_sanitize_c = true;
 
     const math_test = b.addTest("src/math.zig");
-    // const math_run_cmd = math_test.run();
 
-    // const test_run_step = b.step("run-tests", "Run tests");
-    // test_run_step.dependOn(&math_run_cmd.step);
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&math_test.step);
 
     try addExample(b, "noise");
+    try addExample(b, "model");
 }

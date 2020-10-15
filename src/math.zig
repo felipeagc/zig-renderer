@@ -16,6 +16,9 @@ pub const Vec2 = extern struct {
     x: f32,
     y: f32,
 
+    pub const zero = Vec2.init(0, 0);
+    pub const one = Vec2.single(1);
+
     pub inline fn init(x: f32, y: f32) Vec2 {
         return Vec2{.x = x, .y = y};
     }
@@ -99,6 +102,9 @@ pub const Vec3 = extern struct {
     z: f32,
 
     const Self = @This();
+
+    pub const zero = Vec3.init(0, 0, 0);
+    pub const one = Vec3.single(1);
 
     pub inline fn init(x: f32, y: f32, z: f32) Self {
         return Self{.x = x, .y = y, .z = z};
@@ -297,6 +303,49 @@ pub const Vec4 = extern struct {
 
     pub inline fn normalize(lhs: Self) Self {
         return sdiv(lhs, norm(lhs));
+    }
+};
+
+pub const Quat = extern struct {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+
+    const Self = @This();
+
+    pub const identity = Self.init(0, 0, 0, 1);
+
+    pub inline fn init(x: f32, y: f32, z: f32, w: f32) Self {
+        return Self{.x = x, .y = y, .z = z, .w = w};
+    }
+
+    pub fn toMat4(self: *Self) Mat4 {
+        var result = Mat4.identity;
+
+        var xx: f32 = self.x * self.x;
+        var yy: f32 = self.y * self.y;
+        var zz: f32 = self.z * self.z;
+        var xy: f32 = self.x * self.y;
+        var xz: f32 = self.x * self.z;
+        var yz: f32 = self.y * self.z;
+        var wx: f32 = self.w * self.x;
+        var wy: f32 = self.w * self.y;
+        var wz: f32 = self.w * self.z;
+
+        result.cols[0][0] = 1.0 - 2.0 * (yy + zz);
+        result.cols[0][1] = 2.0 * (xy + wz);
+        result.cols[0][2] = 2.0 * (xz - wy);
+
+        result.cols[1][0] = 2.0 * (xy - wz);
+        result.cols[1][1] = 1.0 - 2.0 * (xx + zz);
+        result.cols[1][2] = 2.0 * (yz + wx);
+
+        result.cols[2][0] = 2.0 * (xz + wy);
+        result.cols[2][1] = 2.0 * (yz - wx);
+        result.cols[2][2] = 1.0 - 2.0 * (xx + yy);
+
+        return result;
     }
 };
 

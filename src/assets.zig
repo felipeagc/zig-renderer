@@ -49,7 +49,10 @@ pub const AssetManager = struct {
             };
         }.VT;
 
-        var asset_obj: *T = try T.init(self.engine, data);
+        var new_data = try self.alloc.dupe(u8, data);
+        defer self.alloc.free(new_data);
+
+        var asset_obj: *T = try T.init(self.engine, new_data);
         var hash = asset_obj.hash();
 
         if (self.map.contains(hash)) {

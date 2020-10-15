@@ -5,20 +5,21 @@ const Engine = @import("./Engine.zig").Engine;
 const Sha1 = std.crypto.hash.Sha1;
 const ts = @import("tinyshader.zig");
 
-pub const PipelineAsset = @This();
+const Self = @This();
+pub const PipelineAsset = Self;
 
 engine: *Engine,
 pipeline: *rg.Pipeline = null,
 asset_hash: AssetHash,
 
-pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
-    const alloc = engine.alloc;
+pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
+    const allocator = engine.alloc;
 
-    var vert_spirv = try compileShaderAlloc(engine.alloc, "vertex", .Vertex, data);
-    defer alloc.free(vert_spirv);
+    var vert_spirv = try compileShaderAlloc(allocator, "vertex", .Vertex, data);
+    defer allocator.free(vert_spirv);
     
-    var frag_spirv = try compileShaderAlloc(engine.alloc, "pixel", .Fragment, data);
-    defer alloc.free(frag_spirv);
+    var frag_spirv = try compileShaderAlloc(allocator, "pixel", .Fragment, data);
+    defer allocator.free(frag_spirv);
 
     var options = try parsePipelineOptions(data);
 
@@ -41,8 +42,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
     var asset_hash: AssetHash = undefined;
     Sha1.hash(data, &asset_hash, .{});
 
-    var self = try alloc.create(@This());
-    self.* = PipelineAsset{
+    var self = try allocator.create(@This());
+    self.* = Self{
         .engine = engine,
         .pipeline = pipeline,
         .asset_hash = asset_hash,
@@ -51,12 +52,12 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*PipelineAsset {
 }
 
 pub fn deinit(self_opaque: *c_void) void {
-    var self = @ptrCast(*PipelineAsset, @alignCast(@alignOf(@This()), self_opaque));
+    var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     self.engine.device.destroyPipeline(self.pipeline);
     self.engine.alloc.destroy(self);
 }
 
-pub fn hash(self: *PipelineAsset) AssetHash {
+pub fn hash(self: *Self) AssetHash {
     return self.asset_hash;
 }
 

@@ -17,6 +17,7 @@ window: *c.GLFWwindow,
 device: *rg.Device,
 white_image: *rg.Image,
 black_image: *rg.Image,
+default_sampler: *rg.Sampler,
 user_data: ?*c_void = null,
 on_resize: ?fn(?*c_void, i32, i32) void = null,
 
@@ -66,8 +67,8 @@ pub fn init(alloc: *Allocator) !*Engine {
         .aspect = rg.ImageAspect.Color,
     };
 
-    var white_image = device.createImage(&image_info) orelse return error.InitFail;
-    var black_image = device.createImage(&image_info) orelse return error.InitFail;
+    var white_image = device.createImage(&image_info) orelse return error.GpuObjectCreateError;
+    var black_image = device.createImage(&image_info) orelse return error.GpuObjectCreateError;
 
     var white_data = [_]u8{255, 255, 255, 255};
     device.uploadImage(&rg.ImageCopy{
@@ -91,12 +92,20 @@ pub fn init(alloc: *Allocator) !*Engine {
         @sizeOf(@TypeOf(black_data)),
         &black_data[0]);
 
+    var default_sampler = device.createSampler(&rg.SamplerInfo{
+        .min_filter = .Linear,
+        .mag_filter = .Linear,
+        .address_mode = .Repeat,
+        .border_color = .FloatTransparentBlack,
+    }) orelse return error.GpuObjectCreateError;
+
     self.* = Engine{
         .alloc = alloc,
         .window = window,
         .device = device,
         .white_image = white_image,
         .black_image = black_image,
+        .default_sampler = default_sampler,
     };
 
     return self;
@@ -108,6 +117,7 @@ pub fn deinit(self: *Engine) void {
 
     self.device.destroyImage(self.white_image);
     self.device.destroyImage(self.black_image);
+    self.device.destroySampler(self.default_sampler);
     self.device.destroy();
     self.alloc.destroy(self);
 }
