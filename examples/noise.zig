@@ -37,9 +37,6 @@ pub fn init(allocator: *Allocator) !*App {
     var post_pipeline = try asset_manager.load(
         PipelineAsset, @embedFile("../shaders/post.hlsl"));
 
-    _ = try asset_manager.load(
-        GltfAsset, @embedFile("../assets/DamagedHelmet.glb"));
-
     var graph = rg.Graph.create(
         engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
         orelse return error.InitFail;
