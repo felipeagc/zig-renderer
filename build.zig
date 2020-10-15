@@ -8,6 +8,7 @@ const ArrayList = std.ArrayList;
 var target: std.zig.CrossTarget = undefined;
 var mode: builtin.Mode = undefined;
 var renderer_lib: *std.build.LibExeObjStep = undefined;
+var stb_image_lib: *std.build.LibExeObjStep = undefined;
 var renderer_pkg = std.build.Pkg {
     .name = "renderer",
     .path = "src/main.zig",
@@ -24,6 +25,7 @@ fn addExample(b: *Builder, comptime name: []const u8) !void {
     exe.addIncludeDir("thirdparty/glfw/include");
     exe.addPackage(renderer_pkg);
     exe.linkLibrary(renderer_lib);
+    exe.linkLibrary(stb_image_lib);
     exe.install();
 
     const run_cmd = exe.run();
@@ -37,6 +39,13 @@ pub fn build(b: *Builder) !void {
     target = b.standardTargetOptions(.{});
     if (target.getOs().tag == .windows) target.abi = std.builtin.Abi.gnu;
     mode = b.standardReleaseOptions();
+
+    stb_image_lib = b.addStaticLibrary("renderer", null);
+    stb_image_lib.setTarget(target);
+    stb_image_lib.setBuildMode(mode);
+    stb_image_lib.linkLibC();
+    stb_image_lib.addCSourceFile("thirdparty/stb_image/stb_image.c", &[_][]u8{});
+    stb_image_lib.disable_sanitize_c = true;
 
     renderer_lib = b.addStaticLibrary("renderer", null);
     renderer_lib.setTarget(target);
@@ -69,9 +78,7 @@ pub fn build(b: *Builder) !void {
         "thirdparty/rendergraph/rendergraph/rendergraph_ext.c", &[_][]u8{});
     renderer_lib.addCSourceFile(
         "thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
-    renderer_lib.addCSourceFile("thirdparty/stb_image/stb_image.c", &[_][]u8{});
     renderer_lib.addCSourceFile("thirdparty/cgltf/cgltf.c", &[_][]u8{});
-    renderer_lib.disable_sanitize_c = true;
 
     const math_test = b.addTest("src/math.zig");
 
