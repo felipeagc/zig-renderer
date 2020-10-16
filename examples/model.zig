@@ -41,7 +41,8 @@ const Camera = struct {
         var cursor_pos = engine.getCursorPos();
         var window_size = engine.getWindowSize();
 
-        var aspect = @intToFloat(f32, window_size.width) / @intToFloat(f32, window_size.height);
+        var aspect = @intToFloat(f32, window_size.width)
+            / @intToFloat(f32, window_size.height);
 
         var dx = cursor_pos.x - self.prev_x;
         var dy = cursor_pos.y - self.prev_y;

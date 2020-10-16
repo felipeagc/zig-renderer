@@ -90,6 +90,8 @@ pub const Format = extern enum(c_int) {
     Rgba16Sfloat = 8,
     D32Sfloat = 9,
     D24UnormS8Uint = 10,
+    Bc7Unorm = 11,
+    Bc7Srgb = 12,
     _,
 };
 
@@ -329,7 +331,7 @@ extern fn rgDeviceDestroy(device: *Device) void;
 
 extern fn rgImageCreate(device: *Device, info: *const ImageInfo) ?*Image;
 extern fn rgImageDestroy(device: *Device, image: *Image) void;
-extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *c_void) void;
+extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *const c_void) void;
 
 extern fn rgSamplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler;
 extern fn rgSamplerDestroy(device: *Device, sampler: *Sampler) void;
