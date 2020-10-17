@@ -40,6 +40,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             .format = switch (ktx.format) {
                 .Rgb8 => rg.Format.Rgb8Unorm,
                 .Rgba8 => rg.Format.Rgba8Unorm,
+                .Rgba16f => rg.Format.Rgba16Sfloat,
+                .Rgba32f => rg.Format.Rgba32Sfloat,
                 .Bc7Unorm => rg.Format.Bc7Unorm,
                 .Bc7Srgb => rg.Format.Bc7Srgb,
                 else => {

@@ -6,10 +6,13 @@ allocator: *Allocator,
 engine: *Engine,
 asset_manager: *AssetManager,
 model_pipeline: *PipelineAsset,
+skybox_pipeline: *PipelineAsset,
 graph: *rg.Graph,
 
 model: *GltfAsset,
+skybox: *ImageAsset,
 camera: Camera,
+cube_mesh: Mesh,
 
 last_time: f64 = 0.0,
 delta_time: f64 = 0.0,
@@ -124,8 +127,14 @@ pub fn init(allocator: *Allocator) !*App {
     var model_pipeline = try asset_manager.load(
         PipelineAsset, @embedFile("../shaders/model.hlsl"));
 
+    var skybox_pipeline = try asset_manager.load(
+        PipelineAsset, @embedFile("../shaders/skybox.hlsl"));
+
     var model = try asset_manager.load(
         GltfAsset, @embedFile("../assets/DamagedHelmet.glb"));
+
+    var skybox = try asset_manager.load(
+        ImageAsset, @embedFile("../assets/bridge_skybox.ktx"));
 
     var graph = rg.Graph.create(
         engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
@@ -146,15 +155,19 @@ pub fn init(allocator: *Allocator) !*App {
         .engine = engine,
         .asset_manager = asset_manager,
         .model_pipeline = model_pipeline,
+        .skybox_pipeline = skybox_pipeline,
         .graph = graph,
         .model = model,
+        .skybox = skybox,
         .camera = .{},
+        .cube_mesh = try Mesh.initCube(engine.device),
     };
     return self;
 }
 
 
 pub fn deinit(self: *App) void {
+    self.cube_mesh.deinit();
     self.graph.destroy();
     self.asset_manager.deinit();
     self.engine.deinit();
@@ -165,6 +178,14 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
 
     self.camera.update(self.engine, @floatCast(f32, self.delta_time));
+
+    cb.bindPipeline(self.skybox_pipeline.pipeline);
+    cb.setUniform(0, 0,
+        @sizeOf(@TypeOf(self.camera.uniform)),
+        @ptrCast(*c_void, &self.camera.uniform));
+    cb.bindSampler(0, 1, self.engine.default_sampler);
+    cb.bindImage(1, 1, self.skybox.image);
+    self.cube_mesh.draw(cb);
 
     cb.bindPipeline(self.model_pipeline.pipeline);
     cb.setUniform(0, 0,

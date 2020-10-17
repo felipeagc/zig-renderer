@@ -6,3 +6,4 @@ pub const AssetManager = @import("./assets.zig").AssetManager;
 pub const PipelineAsset = @import("./PipelineAsset.zig").PipelineAsset;
 pub const GltfAsset = @import("./GltfAsset.zig").GltfAsset;
 pub const ImageAsset = @import("./ImageAsset.zig").ImageAsset;
+pub const Mesh = @import("./mesh.zig").Mesh;

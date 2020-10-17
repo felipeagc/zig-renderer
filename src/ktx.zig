@@ -110,6 +110,8 @@ fn blockSize(format: Format) !u32 {
     switch (format) {
         .Rgb8 => return 3,
         .Rgba8 => return 4,
+        .Rgba16f => return 8,
+        .Rgba32f => return 16,
         .Bc7Unorm => return 16,
         .Bc7Srgb => return 16,
         else => return error.KtxInvalidFormat,
