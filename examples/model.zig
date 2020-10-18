@@ -124,17 +124,6 @@ pub fn init(allocator: *Allocator) !*App {
     var asset_manager = try AssetManager.init(engine);
     errdefer asset_manager.deinit();
 
-    var model_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/model.hlsl"));
-
-    var skybox_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/skybox.hlsl"));
-
-    var model = try asset_manager.load(
-        GltfAsset, @embedFile("../assets/DamagedHelmet.glb"));
-
-    var skybox = try asset_manager.load(
-        ImageAsset, @embedFile("../assets/bridge_skybox.ktx"));
 
     var graph = rg.Graph.create(
         engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
@@ -154,13 +143,13 @@ pub fn init(allocator: *Allocator) !*App {
         .allocator = allocator,
         .engine = engine,
         .asset_manager = asset_manager,
-        .model_pipeline = model_pipeline,
-        .skybox_pipeline = skybox_pipeline,
         .graph = graph,
-        .model = model,
-        .skybox = skybox,
         .camera = .{},
         .cube_mesh = try Mesh.initCube(engine.device),
+        .model_pipeline = try asset_manager.loadFile(PipelineAsset, "shaders/model.hlsl"),
+        .skybox_pipeline = try asset_manager.loadFile(PipelineAsset, "shaders/skybox.hlsl"),
+        .model = try asset_manager.loadFile(GltfAsset, "assets/DamagedHelmet.glb"),
+        .skybox = try asset_manager.loadFile(ImageAsset, "assets/bridge_skybox.ktx"),
     };
     return self;
 }

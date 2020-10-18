@@ -1,8 +1,10 @@
 usingnamespace @import("./common.zig");
 const AutoHashMap = std.AutoHashMap;
+const ArrayList = std.ArrayList;
 const Engine = @import("./Engine.zig").Engine;
 
-pub const AssetHash = [20]u8;
+const Sha1 = std.crypto.hash.Sha1;
+const AssetHash = [20]u8;
 
 pub const AssetVT = struct {
     deinit: fn(self: *c_void) void,
@@ -42,6 +44,19 @@ pub const AssetManager = struct {
         self.alloc.destroy(self);
     }
 
+    pub fn loadFile(self: *AssetManager, comptime T: type, path: []const u8) !*T {
+        var file = try std.fs.cwd().openFile(path, .{});
+        defer file.close();
+
+        var stat = try file.stat();
+
+        var data = try file.reader().readAllAlloc(self.alloc, stat.size);
+        defer self.alloc.free(data);
+
+        var result = self.load(T, data);
+        return result;
+    }
+
     pub fn load(self: *AssetManager, comptime T: type, data: []const u8) !*T {
         var vt = &struct {
             const VT = AssetVT{
@@ -49,11 +64,13 @@ pub const AssetManager = struct {
             };
         }.VT;
 
+        var hash: AssetHash = undefined;
+        Sha1.hash(data, &hash, .{});
+
         var new_data = try self.alloc.dupe(u8, data);
         defer self.alloc.free(new_data);
 
         var asset_obj: *T = try T.init(self.engine, new_data);
-        var hash = asset_obj.hash();
 
         if (self.map.contains(hash)) {
             std.log.info("found duplicate asset: {x}", .{hash});
@@ -64,7 +81,7 @@ pub const AssetManager = struct {
 
         var asset = Asset{.vt = vt, .obj = asset_obj};
 
-        std.log.info("loaded asset: {x}", .{hash});
+        std.log.info("loading " ++ @typeName(T) ++ ": {x}", .{hash});
 
         try self.map.put(hash, asset);
         return asset_obj;

@@ -2,7 +2,6 @@ usingnamespace @import("./common.zig");
 usingnamespace @import("./assets.zig");
 const Engine = @import("./Engine.zig").Engine;
 
-const Sha1 = std.crypto.hash.Sha1;
 const ts = @import("tinyshader.zig");
 
 const Self = @This();
@@ -10,7 +9,6 @@ pub const PipelineAsset = Self;
 
 engine: *Engine,
 pipeline: *rg.Pipeline = null,
-asset_hash: AssetHash,
 
 pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     const allocator = engine.alloc;
@@ -39,14 +37,10 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         engine.device, &vert_shader, &frag_shader, &options) 
         orelse return error.ShaderCompilationFailed;
 
-    var asset_hash: AssetHash = undefined;
-    Sha1.hash(data, &asset_hash, .{});
-
     var self = try allocator.create(@This());
     self.* = Self{
         .engine = engine,
         .pipeline = pipeline,
-        .asset_hash = asset_hash,
     };
     return self;
 }
@@ -55,10 +49,6 @@ pub fn deinit(self_opaque: *c_void) void {
     var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     self.engine.device.destroyPipeline(self.pipeline);
     self.engine.alloc.destroy(self);
-}
-
-pub fn hash(self: *Self) AssetHash {
-    return self.asset_hash;
 }
 
 fn compileShaderAlloc(

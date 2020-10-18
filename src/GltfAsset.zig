@@ -4,7 +4,6 @@ usingnamespace @import("./math.zig");
 const Engine = @import("./Engine.zig").Engine;
 
 const ArrayList = std.ArrayList;
-const Sha1 = std.crypto.hash.Sha1;
 usingnamespace @import("./cgltf.zig");
 usingnamespace @import("./stb_image.zig");
 
@@ -12,7 +11,6 @@ const Self = @This();
 pub const GltfAsset = @This();
 
 engine: *Engine,
-asset_hash: AssetHash,
 
 nodes: []Node,
 root_nodes: ArrayList(usize),
@@ -108,9 +106,6 @@ const Node = struct {
 
 pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     const allocator = engine.alloc;
-
-    var asset_hash: AssetHash = undefined;
-    Sha1.hash(data, &asset_hash, .{});
 
     var gltf_options = cgltf_options{ .type = cgltf_file_type.glb };
     var gltf_data: *cgltf_data = undefined;
@@ -554,7 +549,6 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     var self = try allocator.create(@This());
     self.* = Self{
         .engine = engine,
-        .asset_hash = asset_hash,
         .images = images,
         .samplers = samplers,
         .materials = materials,
@@ -604,10 +598,6 @@ pub fn deinit(self_opaque: *c_void) void {
     self.root_nodes.deinit();
 
     self.engine.alloc.destroy(self);
-}
-
-pub fn hash(self: *Self) AssetHash {
-    return self.asset_hash;
 }
 
 fn drawNode(
