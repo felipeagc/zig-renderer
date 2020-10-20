@@ -52,11 +52,11 @@ pub fn init(allocator: *Allocator) !*App {
     });
 
     var main_pass = graph.addPass(.Graphics, mainPassCallback);
-    graph.passUseResource(main_pass, color_res, .ColorAttachment);
-    graph.passUseResource(main_pass, depth_res, .DepthStencilAttachment);
+    graph.passUseResource(main_pass, color_res, .Undefined, .ColorAttachment);
+    graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
 
     var backbuffer_pass = graph.addPass(.Graphics, backbufferPassCallback);
-    graph.passUseResource(backbuffer_pass, color_res, .Sampled);
+    graph.passUseResource(backbuffer_pass, color_res, .ColorAttachment, .Sampled);
 
     graph.build();
 

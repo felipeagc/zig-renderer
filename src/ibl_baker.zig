@@ -51,8 +51,9 @@ pub const IBLBaker = struct {
 
         var format: rg.Format = .Rgba32Sfloat;
 
-        var mip_count: u32  = @floatToInt(u32, (std.math.floor(
-            std.math.log2(@intToFloat(f32, dim)))) + 1);
+        // var mip_count: u32  = @floatToInt(u32, (std.math.floor(
+        //     std.math.log2(@intToFloat(f32, dim)))) + 1);
+        var mip_count: u32  = 1;
 
         var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
             orelse return error.GpuObjectCreateError;
@@ -81,15 +82,17 @@ pub const IBLBaker = struct {
         }) orelse return error.GpuObjectCreateError;
         self.engine.device.setObjectName(.Image, cubemap_image, "Irradiance cubemap");
 
+        self.engine.device.imageBarrier(cubemap_image, .Undefined, .TransferDst);
+
         var cubemap_ref = graph.addExternalImage(cubemap_image);
         self.current_cubemap_ref = cubemap_ref;
 
         var layer_pass = graph.addPass(.Graphics, layerPassCallback);
-        graph.passUseResource(layer_pass, offscreen_ref, .ColorAttachment);
+        graph.passUseResource(layer_pass, offscreen_ref, .Undefined, .ColorAttachment);
 
         var transfer_pass = graph.addPass(.Transfer, transferPassCallback);
-        graph.passUseResource(transfer_pass, offscreen_ref, .TransferSrc);
-        graph.passUseResource(transfer_pass, cubemap_ref, .TransferDst);
+        graph.passUseResource(transfer_pass, offscreen_ref, .ColorAttachment, .TransferSrc);
+        graph.passUseResource(transfer_pass, cubemap_ref, .TransferDst, .TransferDst);
 
         graph.build();
 
@@ -117,8 +120,8 @@ pub const IBLBaker = struct {
         var uniform: extern struct {
             mvp: Mat4,
         } = .{
-            .mvp = direction_matrices[self.current_layer]
-                .mul(Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)),
+            .mvp = Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)
+                .mul(direction_matrices[self.current_layer]),
         };
 
         var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);

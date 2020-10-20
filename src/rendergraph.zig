@@ -269,11 +269,12 @@ pub const PipelineInfo = extern struct {
 };
 
 pub const ResourceUsage = extern enum(c_int) {
-    ColorAttachment = 0,
-    DepthStencilAttachment = 1,
-    Sampled = 2,
-    TransferSrc = 3,
-    TransferDst = 4,
+    Undefined = 0,
+    ColorAttachment = 1,
+    DepthStencilAttachment = 2,
+    Sampled = 3,
+    TransferSrc = 4,
+    TransferDst = 5,
     _,
 };
 
@@ -387,7 +388,7 @@ extern fn rgGraphAddImage(graph: *Graph, info: *const GraphImageInfo) ResourceRe
 extern fn rgGraphAddBuffer(graph: *Graph, info: *const BufferInfo) ResourceRef;
 extern fn rgGraphAddExternalImage(graph: *Graph, image: *Image) ResourceRef;
 extern fn rgGraphAddExternalBuffer(graph: *Graph, buffer: *Buffer) ResourceRef;
-extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: ResourceRef, usage: ResourceUsage) void;
+extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: ResourceRef, pre_usage: ResourceUsage, post_usage: ResourceUsage) void;
 extern fn rgGraphBuild(graph: *Graph) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
 extern fn rgGraphResize(graph: *Graph) void;
