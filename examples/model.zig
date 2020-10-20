@@ -5,12 +5,14 @@ pub const App = @This();
 allocator: *Allocator,
 engine: *Engine,
 asset_manager: *AssetManager,
+
 model_pipeline: *PipelineAsset,
 skybox_pipeline: *PipelineAsset,
 graph: *rg.Graph,
 
 model: *GltfAsset,
-skybox: *ImageAsset,
+skybox_image: *ImageAsset,
+irradiance_image: *rg.Image,
 camera: Camera,
 cube_mesh: Mesh,
 
@@ -116,14 +118,13 @@ pub fn init(allocator: *Allocator) !*App {
     errdefer allocator.destroy(self);
 
     var engine = try Engine.init(allocator);
-    errdefer engine.deinit();
+    // errdefer engine.deinit();
     engine.user_data = @ptrCast(*c_void, self);
     engine.on_resize = onResize;
     engine.setCursorEnabled(false);
 
     var asset_manager = try AssetManager.init(engine);
     errdefer asset_manager.deinit();
-
 
     var graph = rg.Graph.create(
         engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
@@ -134,28 +135,38 @@ pub fn init(allocator: *Allocator) !*App {
         .format = .D24UnormS8Uint,
     });
 
-    var main_pass = graph.addPass(mainPassCallback);
-    graph.addPassOutput(main_pass, depth_res, .DepthStencilAttachment);
+    var main_pass = graph.addPass(.Graphics, mainPassCallback);
+    graph.passUseResource(main_pass, depth_res, .DepthStencilAttachment);
 
     graph.build();
+
+    var ibl_baker = try IBLBaker.init(engine);
+    defer ibl_baker.deinit();
+
+    var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/bridge_skybox.ktx");
+    engine.device.setObjectName(.Image, skybox_image.image, "Skybox image");
+    var irradiance_image = try ibl_baker.generateIrradiance(skybox_image.image);
 
     self.* = .{
         .allocator = allocator,
         .engine = engine,
         .asset_manager = asset_manager,
+
         .graph = graph,
         .camera = .{},
         .cube_mesh = try Mesh.initCube(engine.device),
         .model_pipeline = try asset_manager.loadFile(PipelineAsset, "shaders/model.hlsl"),
         .skybox_pipeline = try asset_manager.loadFile(PipelineAsset, "shaders/skybox.hlsl"),
         .model = try asset_manager.loadFile(GltfAsset, "assets/DamagedHelmet.glb"),
-        .skybox = try asset_manager.loadFile(ImageAsset, "assets/bridge_skybox.ktx"),
+        .skybox_image = skybox_image,
+        .irradiance_image = irradiance_image,
     };
     return self;
 }
 
 
 pub fn deinit(self: *App) void {
+    self.engine.device.destroyImage(self.irradiance_image);
     self.cube_mesh.deinit();
     self.graph.destroy();
     self.asset_manager.deinit();
@@ -173,7 +184,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
         @sizeOf(@TypeOf(self.camera.uniform)),
         @ptrCast(*c_void, &self.camera.uniform));
     cb.bindSampler(0, 1, self.engine.default_sampler);
-    cb.bindImage(1, 1, self.skybox.image);
+    cb.bindImage(1, 1, self.irradiance_image);
     self.cube_mesh.draw(cb);
 
     cb.bindPipeline(self.model_pipeline.pipeline);

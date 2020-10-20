@@ -14,15 +14,20 @@ pub const Device = opaque {
     pub const createImage = rgImageCreate;
     pub const destroyImage = rgImageDestroy;
     pub const uploadImage = rgImageUpload;
+    pub const imageBarrier = rgImageBarrier;
 
     pub const createSampler = rgSamplerCreate;
     pub const destroySampler = rgSamplerDestroy;
+
+    pub const setObjectName = rgObjectSetName;
 };
 pub const Pipeline = opaque {};
 pub const Buffer = opaque {};
 pub const Image = opaque {};
 pub const Sampler = opaque {};
 pub const CmdBuffer = opaque {
+    pub const setViewport = rgCmdSetViewport;
+    pub const setScissor = rgCmdSetScissor;
     pub const bindPipeline = rgCmdBindPipeline;
     pub const bindImage = rgCmdBindImage;
     pub const bindSampler = rgCmdBindSampler;
@@ -47,12 +52,14 @@ pub const Graph = opaque {
     pub const addPass = rgGraphAddPass;
     pub const addImage = rgGraphAddImage;
     pub const addBuffer = rgGraphAddBuffer;
-    pub const addPassInput = rgGraphAddPassInput;
-    pub const addPassOutput = rgGraphAddPassOutput;
+    pub const addExternalImage = rgGraphAddExternalImage;
+    pub const addExternalBuffer = rgGraphAddExternalBuffer;
+    pub const passUseResource = rgGraphPassUseResource;
 
     pub const build = rgGraphBuild;
     pub const resize = rgGraphResize;
     pub const execute = rgGraphExecute;
+    pub const waitAll = rgGraphWaitAll;
 
     pub const getBuffer = rgGraphGetBuffer;
     pub const getImage = rgGraphGetImage;
@@ -261,16 +268,19 @@ pub const PipelineInfo = extern struct {
     fragment_entry: [*c]const u8 = null,
 };
 
-pub const ResourceType = extern enum(c_int) {
-    Image = 0,
-    Buffer = 1,
-    _,
-};
-
 pub const ResourceUsage = extern enum(c_int) {
     ColorAttachment = 0,
     DepthStencilAttachment = 1,
     Sampled = 2,
+    TransferSrc = 3,
+    TransferDst = 4,
+    _,
+};
+
+pub const PassType = extern enum(c_int) {
+    Graphics = 0,
+    Compute = 1,
+    Transfer = 2,
     _,
 };
 
@@ -292,14 +302,6 @@ pub const GraphImageInfo = extern struct {
     format: Format,
 };
 
-pub const ResourceInfo = extern struct {
-    type: ResourceType,
-    info: extern union {
-        image: GraphImageInfo,
-        buffer: BufferInfo,
-    },
-};
-
 pub const Offset3D = extern struct {
     x: i32 = 0,
     y: i32 = 0,
@@ -310,6 +312,30 @@ pub const Extent3D = extern struct {
     width: u32,
     height: u32,
     depth: u32,
+};
+
+pub const Offset2D = extern struct {
+    x: i32 = 0,
+    y: i32 = 0,
+};
+
+pub const Extent2D = extern struct {
+    width: u32,
+    height: u32,
+};
+
+pub const Rect2D = extern struct {
+    offset: Offset2D,
+    extent: Extent2D,
+};
+
+pub const Viewport = extern struct {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    min_depth: f32,
+    max_depth: f32,
 };
 
 pub const ImageCopy = extern struct {
@@ -326,12 +352,22 @@ pub const BufferCopy = extern struct {
     image_height: u32,
 };
 
+pub const ObjectType = extern enum(i32) {
+    Unknown = 0,
+    Image = 1,
+    Buffer = 2,
+};
+
 extern fn rgDeviceCreate() ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
+
+extern fn rgObjectSetName(device: *Device, type: ObjectType, object: *c_void, name: [*:0]const u8) void;
 
 extern fn rgImageCreate(device: *Device, info: *const ImageInfo) ?*Image;
 extern fn rgImageDestroy(device: *Device, image: *Image) void;
 extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *const c_void) void;
+extern fn rgImageBarrier(device: *Device, image: *Image, from: ResourceUsage, to: ResourceUsage) void;
+
 
 extern fn rgSamplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler;
 extern fn rgSamplerDestroy(device: *Device, sampler: *Sampler) void;
@@ -345,19 +381,23 @@ extern fn rgBufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: 
 extern fn rgPipelineCreate(device: *Device, info: *const PipelineInfo) ?*Pipeline;
 extern fn rgPipelineDestroy(device: *Device, pipeline: *Pipeline) void;
 
-extern fn rgGraphCreate(device: *Device, user_data: ?*c_void, window: *const PlatformWindowInfo) ?*Graph;
-extern fn rgGraphAddPass(graph: *Graph, callback: PassCallback) PassRef;
+extern fn rgGraphCreate(device: *Device, user_data: ?*c_void, window: ?*const PlatformWindowInfo) ?*Graph;
+extern fn rgGraphAddPass(graph: *Graph, type: PassType, callback: ?PassCallback) PassRef;
 extern fn rgGraphAddImage(graph: *Graph, info: *const GraphImageInfo) ResourceRef;
 extern fn rgGraphAddBuffer(graph: *Graph, info: *const BufferInfo) ResourceRef;
-extern fn rgGraphAddPassInput(graph: *Graph, pass: PassRef, resource: ResourceRef, usage: ResourceUsage) void;
-extern fn rgGraphAddPassOutput(graph: *Graph, pass: PassRef, resource: ResourceRef, usage: ResourceUsage) void;
+extern fn rgGraphAddExternalImage(graph: *Graph, image: *Image) ResourceRef;
+extern fn rgGraphAddExternalBuffer(graph: *Graph, buffer: *Buffer) ResourceRef;
+extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: ResourceRef, usage: ResourceUsage) void;
 extern fn rgGraphBuild(graph: *Graph) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
 extern fn rgGraphResize(graph: *Graph) void;
 extern fn rgGraphExecute(graph: *Graph) void;
+extern fn rgGraphWaitAll(graph: *Graph) void;
 extern fn rgGraphGetBuffer(graph: *Graph, res: ResourceRef) *Buffer;
 extern fn rgGraphGetImage(graph: *Graph, res: ResourceRef) *Image;
 
+extern fn rgCmdSetViewport(cb: *CmdBuffer, viewport: *const Viewport) void;
+extern fn rgCmdSetScissor(cb: *CmdBuffer, rect: *const Rect2D) void;
 extern fn rgCmdBindPipeline(cb: *CmdBuffer, pipeline: *Pipeline) void;
 extern fn rgCmdBindImage(cb: *CmdBuffer, binding: u32, set: u32, image: *Image) void;
 extern fn rgCmdBindSampler(cb: *CmdBuffer, binding: u32, set: u32, sampler: *Sampler) void;

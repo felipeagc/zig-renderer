@@ -224,6 +224,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
                 / @sizeOf(@TypeOf(texture.image.*));
             material.albedo_image = images[image_index];
 
+            engine.device.setObjectName(.Image, material.albedo_image, "GLTF Image: albedo");
+
             if (texture.sampler) |sampler| {
                 var sampler_index = (@ptrToInt(sampler) - @ptrToInt(gltf_data.samplers)) 
                     / @sizeOf(@TypeOf(sampler.*));
@@ -235,6 +237,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             var image_index = (@ptrToInt(texture.image) - @ptrToInt(gltf_data.images))
                 / @sizeOf(@TypeOf(texture.image.*));
             material.normal_image = images[image_index];
+
+            engine.device.setObjectName(.Image, material.normal_image, "GLTF Image: normal");
 
             if (texture.sampler) |sampler| {
                 var sampler_index = (@ptrToInt(sampler) - @ptrToInt(gltf_data.samplers)) 
@@ -248,6 +252,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
                 / @sizeOf(@TypeOf(texture.image.*));
             material.metallic_roughness_image = images[image_index];
 
+            engine.device.setObjectName(.Image, material.metallic_roughness_image, "GLTF Image: metallic roughness");
+
             if (texture.sampler) |sampler| {
                 var sampler_index = (@ptrToInt(sampler) - @ptrToInt(gltf_data.samplers)) 
                     / @sizeOf(@TypeOf(sampler.*));
@@ -259,6 +265,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             var image_index = (@ptrToInt(texture.image) - @ptrToInt(gltf_data.images))
                 / @sizeOf(@TypeOf(texture.image.*));
             material.occlusion_image = images[image_index];
+
+            engine.device.setObjectName(.Image, material.occlusion_image, "GLTF Image: occlusion");
 
             if (texture.sampler) |sampler| {
                 var sampler_index = (@ptrToInt(sampler) - @ptrToInt(gltf_data.samplers)) 
@@ -272,6 +280,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             var image_index = (@ptrToInt(texture.image) - @ptrToInt(gltf_data.images))
                 / @sizeOf(@TypeOf(texture.image.*));
             material.emissive_image = images[image_index];
+
+            engine.device.setObjectName(.Image, material.emissive_image, "GLTF Image: emissive");
 
             if (texture.sampler) |sampler| {
                 var sampler_index = (@ptrToInt(sampler) - @ptrToInt(gltf_data.samplers)) 

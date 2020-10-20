@@ -51,12 +51,12 @@ pub fn init(allocator: *Allocator) !*App {
         .format = .Rgba8Unorm,
     });
 
-    var main_pass = graph.addPass(mainPassCallback);
-    graph.addPassOutput(main_pass, color_res, .ColorAttachment);
-    graph.addPassOutput(main_pass, depth_res, .DepthStencilAttachment);
+    var main_pass = graph.addPass(.Graphics, mainPassCallback);
+    graph.passUseResource(main_pass, color_res, .ColorAttachment);
+    graph.passUseResource(main_pass, depth_res, .DepthStencilAttachment);
 
-    var backbuffer_pass = graph.addPass(backbufferPassCallback);
-    graph.addPassInput(main_pass, color_res, .Sampled);
+    var backbuffer_pass = graph.addPass(.Graphics, backbufferPassCallback);
+    graph.passUseResource(backbuffer_pass, color_res, .Sampled);
 
     graph.build();
 
