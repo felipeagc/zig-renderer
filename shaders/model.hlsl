@@ -10,6 +10,11 @@
 #define GAMMA 2.2
 #define PI 3.14159265359
 
+#define SUN_DIRECTION float3(-1.0, -1.0, -1.0)
+#define SUN_COLOR float3(1.0, 1.0, 1.0)
+#define SUN_INTENSITY 5.0
+#define SUN_EXPOSURE 8.0
+
 struct Camera
 {
 	float4 pos;
@@ -55,15 +60,22 @@ struct LightInfo
 
 [[vk::binding(0, 0)]] ConstantBuffer<Camera> camera;
 
-[[vk::binding(0, 1)]] ConstantBuffer<Model> model;
+[[vk::binding(0, 1)]] SamplerState cube_sampler;
+[[vk::binding(1, 1)]] SamplerState radiance_sampler;
+[[vk::binding(2, 1)]] TextureCube<float4> irradiance_map;
+[[vk::binding(3, 1)]] TextureCube<float4> radiance_map;
+[[vk::binding(4, 1)]] Texture2D<float4> brdf_lut;
 
-[[vk::binding(0, 2)]] ConstantBuffer<Material> material;
-[[vk::binding(1, 2)]] SamplerState texture_sampler;
-[[vk::binding(2, 2)]] Texture2D<float4> albedo_texture;
-[[vk::binding(3, 2)]] Texture2D<float4> normal_texture;
-[[vk::binding(4, 2)]] Texture2D<float4> metallic_roughness_texture;
-[[vk::binding(5, 2)]] Texture2D<float4> occlusion_texture;
-[[vk::binding(6, 2)]] Texture2D<float4> emissive_texture;
+[[vk::binding(0, 2)]] ConstantBuffer<Model> model;
+
+[[vk::binding(0, 3)]] ConstantBuffer<Material> material;
+[[vk::binding(1, 3)]] SamplerState texture_sampler;
+[[vk::binding(2, 3)]] Texture2D<float4> albedo_texture;
+[[vk::binding(3, 3)]] Texture2D<float4> normal_texture;
+[[vk::binding(4, 3)]] Texture2D<float4> metallic_roughness_texture;
+[[vk::binding(5, 3)]] Texture2D<float4> occlusion_texture;
+[[vk::binding(6, 3)]] Texture2D<float4> emissive_texture;
+
 
 float4 srgb_to_linear(float4 srgb_in)
 {
@@ -95,11 +107,6 @@ float4 tonemap(float4 color, float exposure)
     return float4(outcol.r, outcol.g, outcol.b, color.a);
 }
 
-float3 diffuse(PBRInfo pbr_inputs)
-{
-    return pbr_inputs.diffuse_color / PI;
-}
-
 float3 specular_reflection(PBRInfo pbr_inputs, LightInfo light_info)
 {
     return pbr_inputs.reflectance0 + (pbr_inputs.reflectance90 - pbr_inputs.reflectance0) *
@@ -122,6 +129,35 @@ float microfacet_distribution(PBRInfo pbr_inputs, LightInfo light_info)
     float roughness_sq = pbr_inputs.alpha_roughness * pbr_inputs.alpha_roughness;
     float f = (light_info.NdotH * roughness_sq - light_info.NdotH) * light_info.NdotH + 1.0;
     return roughness_sq / (PI * f * f);
+}
+
+float3 get_ibl_contribution(PBRInfo pbr_inputs)
+{
+    float width;
+    float height;
+    float radiance_mip_levels;
+    radiance_map.GetDimensions(0, width, height, radiance_mip_levels);
+
+    float lod = (pbr_inputs.perceptual_roughness * radiance_mip_levels);
+    // retrieve a scale and bias to F0. See [1], Figure 3
+    float3 brdf =
+        brdf_lut
+            .Sample(
+                texture_sampler, float2(pbr_inputs.NdotV, 1.0 - pbr_inputs.perceptual_roughness))
+            .rgb;
+    float3 diffuse_light =
+        srgb_to_linear(tonemap(irradiance_map.Sample(cube_sampler, pbr_inputs.N), SUN_EXPOSURE))
+            .rgb;
+
+    float3 specular_light =
+        srgb_to_linear(
+            tonemap(radiance_map.SampleLevel(radiance_sampler, pbr_inputs.R, lod), SUN_EXPOSURE))
+            .rgb;
+
+    float3 diffuse = diffuse_light * pbr_inputs.diffuse_color;
+    float3 specular = specular_light * (pbr_inputs.specular_color * brdf.x + brdf.y);
+
+    return diffuse + specular;
 }
 
 void vertex(
@@ -193,15 +229,14 @@ void pixel(
 
     float3 Lo = float3(0.0, 0.0, 0.0);
 
+    float3 diffuseOverPi = (pbr_inputs.diffuse_color / PI);
+
     // Directional light (sun)
     {
-		float3 sun_direction = float3(1.0, -1.0, 1.0);
-		float3 sun_color = float3(1.0, 1.0, 1.0);
-		float sun_intensity = 5.0;
 
-        float3 L = normalize(-sun_direction);
+        float3 L = normalize(-SUN_DIRECTION);
         float3 H = normalize(pbr_inputs.V + L);
-        float3 light_color = sun_color * sun_intensity;
+        float3 light_color = SUN_COLOR * SUN_INTENSITY;
 
         LightInfo light_info;
         light_info.NdotL = clamp(dot(pbr_inputs.N, L), 0.001, 1.0);
@@ -212,12 +247,16 @@ void pixel(
         float G = geometric_occlusion(pbr_inputs, light_info);
         float D = microfacet_distribution(pbr_inputs, light_info);
 
-        float3 diffuse_contrib = (1.0 - F) * diffuse(pbr_inputs);
+        float3 diffuse_contrib = (1.0 - F) * diffuseOverPi;
         float3 spec_contrib = F * G * D / (4.0 * light_info.NdotL * pbr_inputs.NdotV);
 
         float3 color = light_info.NdotL * light_color * (diffuse_contrib + spec_contrib);
         Lo = Lo + color;
     }
+
+    Lo = Lo + get_ibl_contribution(pbr_inputs);
+    Lo = Lo * occlusion;
+    Lo = Lo + emissive;
 
 	out_color = float4(Lo.r, Lo.g, Lo.b, albedo.a);
 }

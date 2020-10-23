@@ -9,17 +9,12 @@
 struct Uniform
 {
     float4x4 mvp;
+    float roughness;
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<Uniform> uniform_data;
 [[vk::binding(1, 0)]] SamplerState cube_sampler;
 [[vk::binding(2, 0)]] TextureCube<float4> skybox;
-
-struct VsOutput
-{
-    float4 pos : SV_Position;
-    float3 uvw : TEXCOORD;
-};
 
 void vertex(
     in float3 pos : POSITION,

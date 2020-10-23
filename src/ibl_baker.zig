@@ -4,9 +4,16 @@ const Engine = @import("./Engine.zig").Engine;
 const PipelineAsset = @import("./PipelineAsset.zig").PipelineAsset;
 const Mesh = @import("./mesh.zig").Mesh;
 
+const CubemapType = enum {
+    Irradiance,
+    Radiance,
+};
+
 pub const IBLBaker = struct {
     engine: *Engine,
     irradiance_pipeline: *PipelineAsset,
+    radiance_pipeline: *PipelineAsset,
+    brdf_pipeline: *PipelineAsset,
     skybox_sampler: *rg.Sampler,
     cube_mesh: Mesh,
     current_mip: u32 = 0,
@@ -16,6 +23,8 @@ pub const IBLBaker = struct {
     current_graph: ?*rg.Graph = null,
     current_offscreen_ref: ?rg.ResourceRef = null,
     current_cubemap_ref: ?rg.ResourceRef = null,
+    current_type: ?CubemapType = null,
+    current_mip_count: u32 = 0,
 
     pub fn init(engine: *Engine) !IBLBaker {
         var skybox_sampler = engine.device.createSampler(&rg.SamplerInfo{
@@ -31,6 +40,10 @@ pub const IBLBaker = struct {
             .engine = engine,
             .irradiance_pipeline = try PipelineAsset.init(engine,
                 @embedFile("../shaders/irradiance.hlsl")),
+            .radiance_pipeline = try PipelineAsset.init(engine,
+                @embedFile("../shaders/radiance.hlsl")),
+            .brdf_pipeline = try PipelineAsset.init(engine,
+                @embedFile("../shaders/brdf.hlsl")),
             .cube_mesh = try Mesh.initCube(engine.device),
             .skybox_sampler = skybox_sampler,
         };
@@ -39,21 +52,85 @@ pub const IBLBaker = struct {
     pub fn deinit(self: *IBLBaker) void {
         self.engine.device.destroySampler(self.skybox_sampler);
         self.irradiance_pipeline.deinit();
+        self.radiance_pipeline.deinit();
+        self.brdf_pipeline.deinit();
         self.cube_mesh.deinit();
     }
 
-    pub fn generateIrradiance(self: *IBLBaker, skybox: *rg.Image) !*rg.Image {
+    pub fn generateBrdfLut(self: *IBLBaker) !*rg.Image {
+        var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
+            orelse return error.GpuObjectCreateError;
+        defer graph.destroy();
+
+        self.current_graph = graph;
+        defer self.current_graph = null;
+
+        self.current_dim = 512;
+
+        const main_callback = struct {
+            fn callback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
+                var ibl_baker: *IBLBaker = @ptrCast(
+                    *IBLBaker, @alignCast(@alignOf(IBLBaker), user_data));
+
+                cb.bindPipeline(ibl_baker.brdf_pipeline.pipeline);
+                cb.draw(3, 1, 0, 0);
+            }
+        }.callback;
+
+        var brdf_image = self.engine.device.createImage(&rg.ImageInfo{
+            .width = self.current_dim,
+            .height = self.current_dim,
+            .format = .Rg32Sfloat,
+            .aspect = rg.ImageAspect.Color,
+            .usage = rg.ImageUsage.ColorAttachment | rg.ImageUsage.Sampled,
+        }) orelse return error.GpuObjectCreateError;
+        self.engine.device.setObjectName(
+            .Image,
+            brdf_image,
+            "BRDF LuT");
+
+        var brdf_ref = graph.addExternalImage(brdf_image);
+
+        var main_pass = graph.addPass(.Graphics, main_callback);
+        graph.passUseResource(main_pass, brdf_ref, .Undefined, .ColorAttachment);
+
+        graph.build();
+
+        graph.execute();
+        graph.waitAll();
+
+        return brdf_image;
+    }
+
+    pub fn generateCubemap(
+        self: *IBLBaker,
+        comptime cubemap_type: CubemapType,
+        skybox: *rg.Image,
+        out_mip_levels: ?*u32
+    ) !*rg.Image {
+        self.current_type = cubemap_type;
         self.current_skybox = skybox;
         defer self.current_skybox = null;
 
-        var dim: u32 = 64;
-        self.current_dim = dim;
+        self.current_dim = switch (cubemap_type) {
+            .Irradiance => 64,
+            .Radiance => 512,
+        };
 
-        var format: rg.Format = .Rgba32Sfloat;
+        var format: rg.Format = switch (cubemap_type) {
+            .Irradiance => .Rgba32Sfloat,
+            .Radiance => .Rgba16Sfloat,
+        };
 
-        // var mip_count: u32  = @floatToInt(u32, (std.math.floor(
-        //     std.math.log2(@intToFloat(f32, dim)))) + 1);
-        var mip_count: u32  = 1;
+        self.current_mip_count = switch (cubemap_type){
+            .Irradiance => 1,
+            .Radiance => @floatToInt(u32, (std.math.floor(
+                std.math.log2(@intToFloat(f32, self.current_dim)))) + 1),
+        };
+
+        if (out_mip_levels) |out_mips| {
+            out_mips.* = self.current_mip_count;
+        }
 
         var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
             orelse return error.GpuObjectCreateError;
@@ -64,23 +141,26 @@ pub const IBLBaker = struct {
 
         var offscreen_ref = graph.addImage(&rg.GraphImageInfo{
             .scaling_mode = .Absolute,
-            .width = @intToFloat(f32, dim),
-            .height = @intToFloat(f32, dim),
+            .width = @intToFloat(f32, self.current_dim),
+            .height = @intToFloat(f32, self.current_dim),
             .format = format,
             .aspect = rg.ImageAspect.Color,
         });
         self.current_offscreen_ref = offscreen_ref;
 
         var cubemap_image = self.engine.device.createImage(&rg.ImageInfo{
-            .width = dim,
-            .height = dim,
+            .width = self.current_dim,
+            .height = self.current_dim,
             .format = format,
             .layer_count = 6,
-            .mip_count = mip_count,
+            .mip_count = self.current_mip_count,
             .aspect = rg.ImageAspect.Color,
             .usage = rg.ImageUsage.TransferDst | rg.ImageUsage.Sampled,
         }) orelse return error.GpuObjectCreateError;
-        self.engine.device.setObjectName(.Image, cubemap_image, "Irradiance cubemap");
+        self.engine.device.setObjectName(
+            .Image,
+            cubemap_image,
+            if (cubemap_type == .Irradiance) "Irradiance cubemap" else "Radiance cubemap");
 
         self.engine.device.imageBarrier(cubemap_image, .Undefined, .TransferDst);
 
@@ -97,7 +177,7 @@ pub const IBLBaker = struct {
         graph.build();
 
         var m: u32 = 0;
-        while (m < mip_count) : (m += 1) {
+        while (m < self.current_mip_count) : (m += 1) {
             var f: u32 = 0;
             while (f < 6) : (f += 1) {
                 self.current_mip = m;
@@ -119,9 +199,12 @@ pub const IBLBaker = struct {
 
         var uniform: extern struct {
             mvp: Mat4,
+            roughness: f32,
         } = .{
             .mvp = Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)
                 .mul(direction_matrices[self.current_layer]),
+            .roughness = @intToFloat(f32, self.current_mip)
+                / (@intToFloat(f32, self.current_mip_count) - 1),
         };
 
         var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
@@ -140,7 +223,10 @@ pub const IBLBaker = struct {
             .extent = .{.width = mip_dim, .height = mip_dim,}
         });
 
-        cb.bindPipeline(self.irradiance_pipeline.pipeline);
+        switch (self.current_type.?) {
+            .Irradiance => cb.bindPipeline(self.irradiance_pipeline.pipeline),
+            .Radiance => cb.bindPipeline(self.radiance_pipeline.pipeline),
+        }
         cb.setUniform(0, 0, @sizeOf(@TypeOf(uniform)), @ptrCast(*c_void, &uniform));
         cb.bindSampler(1, 0, self.skybox_sampler);
         cb.bindImage(2, 0, self.current_skybox.?);

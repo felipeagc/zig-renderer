@@ -40,5 +40,5 @@ void pixel(
 	in float3 uvw : TEXCOORD,
 	out float4 out_color : SV_Target)
 {
-    out_color = cube_texture.Sample(cube_sampler, uvw);
+    out_color = cube_texture.SampleLevel(cube_sampler, uvw, 1.5);
 }
