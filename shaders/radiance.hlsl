@@ -28,7 +28,7 @@ void vertex(
     out float3 out_uvw : TEXCOORD)
 {
     out_uvw = pos;
-    // out_uvw.y = out_uvw.y * -1.0;
+    out_uvw.y = out_uvw.y * -1.0;
     out_pos = mul(uniform_data.mvp, float4(pos.x, pos.y, pos.z, 1.0));
 }
 
@@ -87,7 +87,7 @@ float d_ggx(float NdotH, float roughness)
 
 float3 prefilter_env_map(float3 R, float roughness)
 {
-    uint num_samples = 512;
+    uint num_samples = 32;
 
     float3 N = R;
     float3 V = R;
@@ -120,8 +120,8 @@ float3 prefilter_env_map(float3 R, float roughness)
             float omega_p = 4.0 * PI / (6.0 * env_map_dim * env_map_dim);
             // Biased (+1.0) mip level for better result
             float mip_level =
-                roughness == 0.0 ? 0.0 : max(0.5 * log2(omega_s / omega_p) + 1.0, 0.0f);
-            color = color + skybox.SampleLevel(cube_sampler, L, mip_level).rgb * NdotL;
+                (roughness <= 0.01) ? 0.0 : max(0.5 * log2(omega_s / omega_p) + 1.0, 0.0f);
+            color = color + (skybox.SampleLevel(cube_sampler, L, mip_level).rgb * NdotL);
             total_weight = total_weight + NdotL;
         }
     }
@@ -134,5 +134,5 @@ void pixel(
 {
     float3 N = normalize(uvw);
     float3 col = prefilter_env_map(N, uniform_data.roughness);
-    out_color = float4(col.x, col.y, col.z, 1.0);
+    out_color = float4(col.r, col.g, col.b, 1.0);
 }

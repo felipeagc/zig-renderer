@@ -14,7 +14,7 @@ pub const IBLBaker = struct {
     irradiance_pipeline: *PipelineAsset,
     radiance_pipeline: *PipelineAsset,
     brdf_pipeline: *PipelineAsset,
-    skybox_sampler: *rg.Sampler,
+    skybox_sampler: ?*rg.Sampler = null,
     cube_mesh: Mesh,
     current_mip: u32 = 0,
     current_layer: u32 = 0,
@@ -27,15 +27,6 @@ pub const IBLBaker = struct {
     current_mip_count: u32 = 0,
 
     pub fn init(engine: *Engine) !IBLBaker {
-        var skybox_sampler = engine.device.createSampler(&rg.SamplerInfo{
-            .anisotropy = false,
-            .mag_filter = .Linear,
-            .min_filter = .Linear,
-            .max_lod = 1.0,
-            .address_mode = .ClampToEdge,
-            .border_color = .FloatOpaqueWhite,
-        }) orelse return error.GpuObjectCreateError;
-
         return IBLBaker{
             .engine = engine,
             .irradiance_pipeline = try PipelineAsset.init(engine,
@@ -45,12 +36,14 @@ pub const IBLBaker = struct {
             .brdf_pipeline = try PipelineAsset.init(engine,
                 @embedFile("../shaders/brdf.hlsl")),
             .cube_mesh = try Mesh.initCube(engine.device),
-            .skybox_sampler = skybox_sampler,
         };
     }
 
     pub fn deinit(self: *IBLBaker) void {
-        self.engine.device.destroySampler(self.skybox_sampler);
+        if (self.skybox_sampler) |sampler| {
+            self.engine.device.destroySampler(sampler);
+            self.skybox_sampler = null;
+        }
         self.irradiance_pipeline.deinit();
         self.radiance_pipeline.deinit();
         self.brdf_pipeline.deinit();
@@ -122,11 +115,23 @@ pub const IBLBaker = struct {
             .Radiance => .Rgba16Sfloat,
         };
 
-        self.current_mip_count = switch (cubemap_type){
-            .Irradiance => 1,
-            .Radiance => @floatToInt(u32, (std.math.floor(
-                std.math.log2(@intToFloat(f32, self.current_dim)))) + 1),
-        };
+        self.current_mip_count = @floatToInt(u32, std.math.floor(
+            std.math.log2(@intToFloat(f32, self.current_dim)))) + 1;
+
+        if (self.skybox_sampler) |sampler| {
+            self.engine.device.destroySampler(sampler);
+        }
+
+        self.skybox_sampler = self.engine.device.createSampler(&rg.SamplerInfo{
+            .anisotropy = true,
+            .max_anisotropy = 16.0,
+            .mag_filter = .Linear,
+            .min_filter = .Linear,
+            .min_lod = 0.0,
+            .max_lod = @intToFloat(f32, self.current_mip_count),
+            .address_mode = .ClampToEdge,
+            .border_color = .FloatOpaqueWhite,
+        }) orelse return error.GpuObjectCreateError;
 
         if (out_mip_levels) |out_mips| {
             out_mips.* = self.current_mip_count;
@@ -204,7 +209,7 @@ pub const IBLBaker = struct {
             .mvp = Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)
                 .mul(direction_matrices[self.current_layer]),
             .roughness = @intToFloat(f32, self.current_mip)
-                / (@intToFloat(f32, self.current_mip_count) - 1),
+                / (@intToFloat(f32, self.current_mip_count - 1)),
         };
 
         var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
@@ -228,7 +233,7 @@ pub const IBLBaker = struct {
             .Radiance => cb.bindPipeline(self.radiance_pipeline.pipeline),
         }
         cb.setUniform(0, 0, @sizeOf(@TypeOf(uniform)), @ptrCast(*c_void, &uniform));
-        cb.bindSampler(1, 0, self.skybox_sampler);
+        cb.bindSampler(1, 0, self.skybox_sampler.?);
         cb.bindImage(2, 0, self.current_skybox.?);
 
         self.cube_mesh.draw(cb);

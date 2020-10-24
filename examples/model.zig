@@ -146,7 +146,7 @@ pub fn init(allocator: *Allocator) !*App {
     var ibl_baker = try IBLBaker.init(engine);
     defer ibl_baker.deinit();
 
-    var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/bridge_skybox.ktx");
+    var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/papermill.ktx");
     engine.device.setObjectName(.Image, skybox_image.image, "Skybox image");
     var irradiance_image = try ibl_baker.generateCubemap(.Irradiance, skybox_image.image, null);
     var radiance_mip_levels: u32 = undefined;
@@ -154,12 +154,14 @@ pub fn init(allocator: *Allocator) !*App {
     var brdf_image = try ibl_baker.generateBrdfLut();
 
     var radiance_sampler = engine.device.createSampler(&rg.SamplerInfo{
+        .anisotropy = true,
+        .max_anisotropy = 16.0,
         .min_filter = .Linear,
         .mag_filter = .Linear,
         .min_lod = 0.0,
         .max_lod = @intToFloat(f32, radiance_mip_levels),
-        .address_mode = .Repeat,
-        .border_color = .FloatTransparentBlack,
+        .address_mode = .ClampToEdge,
+        .border_color = .FloatOpaqueWhite,
     }) orelse return error.GpuObjectCreateError;
 
     self.* = .{
@@ -203,7 +205,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     cb.setUniform(0, 0,
         @sizeOf(@TypeOf(self.camera.uniform)),
         @ptrCast(*c_void, &self.camera.uniform));
-    cb.bindSampler(0, 1, self.engine.default_sampler);
+    cb.bindSampler(0, 1, self.radiance_sampler);
     cb.bindImage(1, 1, self.radiance_image);
     self.cube_mesh.draw(cb);
 

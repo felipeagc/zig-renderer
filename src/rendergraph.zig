@@ -156,6 +156,7 @@ pub const ImageInfo = extern struct {
 
 pub const SamplerInfo = extern struct {
     anisotropy: bool = false,
+    max_anisotropy: f32 = 1.0,
     min_lod: f32 = 0.0,
     max_lod: f32 = 1.0,
     mag_filter: Filter,
