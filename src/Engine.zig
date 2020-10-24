@@ -93,10 +93,12 @@ pub fn init(alloc: *Allocator) !*Engine {
         &black_data[0]);
 
     var default_sampler = device.createSampler(&rg.SamplerInfo{
+        .anisotropy = true,
+        .max_anisotropy = 16.0,
         .min_filter = .Linear,
         .mag_filter = .Linear,
         .address_mode = .Repeat,
-        .border_color = .FloatTransparentBlack,
+        .border_color = .FloatOpaqueWhite,
     }) orelse return error.GpuObjectCreateError;
 
     self.* = Engine{

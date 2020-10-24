@@ -116,32 +116,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     result = cgltf_load_buffers(&gltf_options, gltf_data, null);
     if (result != cgltf_result.success) return error.GltfParseError;
 
-    var samplers = try allocator.alloc(*rg.Sampler, gltf_data.samplers_count);
-    for (samplers) |*sampler, i| {
-        var gltf_sampler = &gltf_data.samplers[i];
-        var ci = rg.SamplerInfo{
-            .anisotropy = true,
-            .mag_filter = .Linear,
-            .min_filter = .Linear,
-            .address_mode = .Repeat,
-            .border_color = .FloatTransparentBlack,
-        };
-
-        ci.mag_filter = switch (gltf_sampler.mag_filter) {
-            0x2601 => .Linear,
-            0x2600 => .Nearest,
-            else => .Linear,
-        };
-
-        ci.mag_filter = switch (gltf_sampler.min_filter) {
-            0x2601 => .Linear,
-            0x2600 => .Nearest,
-            else => .Linear,
-        };
-
-        sampler.* = engine.device.createSampler(&ci)
-            orelse return error.GpuObjectCreateError;
-    }
+    var max_lod: f32 = 1.0;
 
     var images = try allocator.alloc(*rg.Image, gltf_data.images_count);
     for (images) |*image, i| {
@@ -172,11 +147,17 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
 
             assert(width > 0 and height > 0 and n_channels > 0);
 
+            var mip_count: u32 = @floatToInt(u32, std.math.floor(
+                std.math.log2(@intToFloat(f32, std.math.max(width, height))))) + 1;
+
             image.* = engine.device.createImage(&rg.ImageInfo{
                 .width = @intCast(u32, width),
                 .height = @intCast(u32, height),
+                .mip_count = mip_count,
                 .format = .Rgba8Unorm,
-                .usage = rg.ImageUsage.TransferDst | rg.ImageUsage.Sampled,
+                .usage = rg.ImageUsage.TransferDst
+                    | rg.ImageUsage.TransferSrc
+                    | rg.ImageUsage.Sampled,
                 .aspect = rg.ImageAspect.Color,
             }) orelse return error.GpuObjectCreateError;
 
@@ -190,9 +171,50 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
                 @intCast(u32, 4 * width * height),
                 image_data,
             );
+
+            engine.device.imageBarrier(image.*, &rg.ImageRegion{
+                .base_mip_level = 0,
+                .mip_count = 1,
+                .base_array_layer = 0,
+                .layer_count = 1,
+            }, .Sampled, .TransferSrc);
+
+            engine.device.generateMipMaps(image.*);
+
+            max_lod = std.math.max(max_lod, @intToFloat(f32, mip_count));
         } else {
             unreachable;
         }
+    }
+
+    var samplers = try allocator.alloc(*rg.Sampler, gltf_data.samplers_count);
+    for (samplers) |*sampler, i| {
+        var gltf_sampler = &gltf_data.samplers[i];
+        var ci = rg.SamplerInfo{
+            .anisotropy = true,
+            .max_anisotropy = 16.0,
+            .mag_filter = .Linear,
+            .min_filter = .Linear,
+            .min_lod = 0.0,
+            .max_lod = max_lod,
+            .address_mode = .Repeat,
+            .border_color = .FloatOpaqueWhite,
+        };
+
+        ci.mag_filter = switch (gltf_sampler.mag_filter) {
+            0x2601 => .Linear,
+            0x2600 => .Nearest,
+            else => .Linear,
+        };
+
+        ci.mag_filter = switch (gltf_sampler.min_filter) {
+            0x2601 => .Linear,
+            0x2600 => .Nearest,
+            else => .Linear,
+        };
+
+        sampler.* = engine.device.createSampler(&ci)
+            orelse return error.GpuObjectCreateError;
     }
 
     var materials = try allocator.alloc(Material, gltf_data.materials_count);

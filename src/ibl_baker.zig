@@ -167,7 +167,12 @@ pub const IBLBaker = struct {
             cubemap_image,
             if (cubemap_type == .Irradiance) "Irradiance cubemap" else "Radiance cubemap");
 
-        self.engine.device.imageBarrier(cubemap_image, .Undefined, .TransferDst);
+        self.engine.device.imageBarrier(cubemap_image, &rg.ImageRegion{
+            .base_mip_level = 0,
+            .mip_count = self.current_mip_count,
+            .base_array_layer = 0,
+            .layer_count = 6,
+        }, .Undefined, .TransferDst);
 
         var cubemap_ref = graph.addExternalImage(cubemap_image);
         self.current_cubemap_ref = cubemap_ref;
@@ -192,7 +197,12 @@ pub const IBLBaker = struct {
             }
         }
 
-        self.engine.device.imageBarrier(cubemap_image, .TransferDst, .Sampled);
+        self.engine.device.imageBarrier(cubemap_image, &rg.ImageRegion{
+            .base_mip_level = 0,
+            .mip_count = self.current_mip_count,
+            .base_array_layer = 0,
+            .layer_count = 6,
+        }, .TransferDst, .Sampled);
 
         return cubemap_image;
     }

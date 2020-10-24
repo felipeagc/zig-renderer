@@ -13,7 +13,7 @@
 #define SUN_DIRECTION float3(-1.0, -1.0, -1.0)
 #define SUN_COLOR float3(1.0, 1.0, 1.0)
 #define SUN_INTENSITY 5.0
-#define SUN_EXPOSURE 8.0
+#define SUN_EXPOSURE 4.5
 
 struct Camera
 {
@@ -232,27 +232,26 @@ void pixel(
     float3 diffuseOverPi = (pbr_inputs.diffuse_color / PI);
 
     // Directional light (sun)
-    {
+    // {
+    //     float3 L = normalize(-SUN_DIRECTION);
+    //     float3 H = normalize(pbr_inputs.V + L);
+    //     float3 light_color = SUN_COLOR * SUN_INTENSITY;
 
-        float3 L = normalize(-SUN_DIRECTION);
-        float3 H = normalize(pbr_inputs.V + L);
-        float3 light_color = SUN_COLOR * SUN_INTENSITY;
+    //     LightInfo light_info;
+    //     light_info.NdotL = clamp(dot(pbr_inputs.N, L), 0.001, 1.0);
+    //     light_info.NdotH = clamp(dot(pbr_inputs.N, H), 0.0, 1.0);
+    //     light_info.VdotH = clamp(dot(pbr_inputs.V, H), 0.0, 1.0);
 
-        LightInfo light_info;
-        light_info.NdotL = clamp(dot(pbr_inputs.N, L), 0.001, 1.0);
-        light_info.NdotH = clamp(dot(pbr_inputs.N, H), 0.0, 1.0);
-        light_info.VdotH = clamp(dot(pbr_inputs.V, H), 0.0, 1.0);
+    //     float3 F = specular_reflection(pbr_inputs, light_info);
+    //     float G = geometric_occlusion(pbr_inputs, light_info);
+    //     float D = microfacet_distribution(pbr_inputs, light_info);
 
-        float3 F = specular_reflection(pbr_inputs, light_info);
-        float G = geometric_occlusion(pbr_inputs, light_info);
-        float D = microfacet_distribution(pbr_inputs, light_info);
+    //     float3 diffuse_contrib = (1.0 - F) * diffuseOverPi;
+    //     float3 spec_contrib = F * G * D / (4.0 * light_info.NdotL * pbr_inputs.NdotV);
 
-        float3 diffuse_contrib = (1.0 - F) * diffuseOverPi;
-        float3 spec_contrib = F * G * D / (4.0 * light_info.NdotL * pbr_inputs.NdotV);
-
-        float3 color = light_info.NdotL * light_color * (diffuse_contrib + spec_contrib);
-        Lo = Lo + color;
-    }
+    //     float3 color = light_info.NdotL * light_color * (diffuse_contrib + spec_contrib);
+    //     Lo = Lo + color;
+    // }
 
     Lo = Lo + get_ibl_contribution(pbr_inputs);
     Lo = Lo * occlusion;

@@ -15,6 +15,7 @@ pub const Device = opaque {
     pub const destroyImage = rgImageDestroy;
     pub const uploadImage = rgImageUpload;
     pub const imageBarrier = rgImageBarrier;
+    pub const generateMipMaps = rgImageGenerateMipMaps;
 
     pub const createSampler = rgSamplerCreate;
     pub const destroySampler = rgSamplerDestroy;
@@ -347,6 +348,13 @@ pub const ImageCopy = extern struct {
     offset: Offset3D = .{},
 };
 
+pub const ImageRegion = extern struct {
+    base_mip_level: u32 = 0,
+    mip_count: u32 = 1,
+    base_array_layer: u32 = 0,
+    layer_count: u32 = 1,
+};
+
 pub const BufferCopy = extern struct {
     buffer: *Buffer,
     offset: usize,
@@ -368,7 +376,8 @@ extern fn rgObjectSetName(device: *Device, type: ObjectType, object: *c_void, na
 extern fn rgImageCreate(device: *Device, info: *const ImageInfo) ?*Image;
 extern fn rgImageDestroy(device: *Device, image: *Image) void;
 extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *const c_void) void;
-extern fn rgImageBarrier(device: *Device, image: *Image, from: ResourceUsage, to: ResourceUsage) void;
+extern fn rgImageBarrier(device: *Device, image: *Image, region: *const ImageRegion, from: ResourceUsage, to: ResourceUsage) void;
+extern fn rgImageGenerateMipMaps(device: *Device, image: *Image) void;
 
 
 extern fn rgSamplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler;
