@@ -3,16 +3,16 @@
 #pragma depth_write true
 #pragma depth_bias false
 #pragma polygon_mode fill
-#pragma cull_mode none
+#pragma cull_mode front
 #pragma front_face clockwise
 #pragma topology triangle_list
 
 #define GAMMA 2.2
 #define PI 3.14159265359
 
-#define SUN_DIRECTION float3(-1.0, -1.0, -1.0)
+#define SUN_DIRECTION float3(0.0, -1.0, 0.0)
 #define SUN_COLOR float3(1.0, 1.0, 1.0)
-#define SUN_INTENSITY 5.0
+#define SUN_INTENSITY 10.0
 #define SUN_EXPOSURE 4.5
 
 struct Camera
@@ -33,7 +33,7 @@ struct Material
 	float4 emissive;
 	float metallic;
 	float roughness;
-	float is_normal_mapped;
+	uint is_normal_mapped;
 };
 
 struct PBRInfo
@@ -166,23 +166,46 @@ void vertex(
 	 in float4 tangent : TANGENT,
 	 in float2 uv      : TEXCOORD0, 
 	out float4 out_pos : SV_Position,
-	out float2 out_uv  : TEXCOORD,
-	out float3 out_normal  : TEXCOORD,
-	out float3 out_world_pos  : TEXCOORD)
+	out float2 out_uv  : TEXCOORD0,
+	out float3 out_normal  : NORMAL,
+	out float3 out_world_pos  : POSITION,
+	out float3x3 out_tbn : TBN_MATRIX)
 {
     float4 loc_pos = mul(model.model, float4(pos.x, pos.y, pos.z, 1));
 	loc_pos = loc_pos / loc_pos.w;
 
-    out_pos = mul(mul(camera.proj, camera.view), loc_pos);
     out_world_pos = loc_pos.xyz;
 	out_uv = uv;
-	out_normal = normal;
+    if (material.is_normal_mapped != 0)
+    {
+        float3 T = normalize(mul(model.model,
+                    float4(tangent.x, tangent.y, tangent.z, 0.0f)).xyz);
+        float3 N = normalize(mul(model.model,
+                    float4(normal.x, normal.y, normal.z, 0.0f)).xyz);
+        T = normalize(T - dot(T, N) * N); // re-orthogonalize
+        float3 B = tangent.w * cross(N, T);
+        out_tbn[0] = T;
+        out_tbn[1] = B;
+        out_tbn[2] = N;
+        out_tbn = transpose(out_tbn);
+    }
+    else
+    {
+        float3x3 model3;
+        model3[0] = model.model[0].xyz;
+        model3[1] = model.model[1].xyz;
+        model3[2] = model.model[2].xyz;
+        out_normal = normalize(mul(model3, normal));
+    }
+
+    out_pos = mul(mul(camera.proj, camera.view), loc_pos);
 }
 
 void pixel(
-	in float2 uv : TEXCOORD,
-	in float3 world_pos : POSITION,
+	in float2 uv : TEXCOORD0,
 	in float3 normal : NORMAL,
+	in float3 world_pos : POSITION,
+    in float3x3 tbn : TBN_MATRIX,
 	out float4 out_color : SV_Target)
 {
     float4 albedo =
@@ -212,19 +235,20 @@ void pixel(
     float3 reflectance = float3(reflectance_single, reflectance_single, reflectance_single);
     pbr_inputs.reflectance90 = clamp(reflectance * 25.0, float3(0.0, 0.0, 0.0), float3(1.0, 1.0, 1.0));
 
-    /* if (material.normal_mapped == 1.0f) */
-    /* { */
-    /*     pbr_inputs.N = normal_texture.Sample(texture_sampler, fs_in.uv).rgb; */
-    /*     pbr_inputs.N = normalize(pbr_inputs.N * 2.0 - 1.0); // Remap from [0, 1] to [-1, 1] */
-    /*     pbr_inputs.N = normalize(mul(fs_in.TBN, pbr_inputs.N)); */
-    /* } */
-    /* else */
-    /* { */
-        pbr_inputs.N = normalize(normal);
-    /* } */
+    if (material.is_normal_mapped != 0)
+    {
+        pbr_inputs.N = normal_texture.Sample(texture_sampler, uv).rgb;
+        pbr_inputs.N = normalize(pbr_inputs.N * 2.0 - 1.0); // Remap from [0, 1] to [-1, 1]
+        pbr_inputs.N = normalize(mul(tbn, pbr_inputs.N));
+    }
+    else
+    {
+        pbr_inputs.N = normal;
+    }
 
     pbr_inputs.V = normalize(camera.pos.xyz - world_pos);
-    pbr_inputs.R = -normalize(reflect(pbr_inputs.V, pbr_inputs.N)); // TODO: may need to flip R.y
+    pbr_inputs.R = reflect(pbr_inputs.V, pbr_inputs.N); // TODO: may need to flip R.y
+    pbr_inputs.R.y = -pbr_inputs.R.y;
     pbr_inputs.NdotV = clamp(abs(dot(pbr_inputs.N, pbr_inputs.V)), 0.001, 1.0);
 
     float3 Lo = float3(0.0, 0.0, 0.0);
@@ -258,4 +282,6 @@ void pixel(
     Lo = Lo + emissive;
 
 	out_color = float4(Lo.r, Lo.g, Lo.b, albedo.a);
+    // out_color = float4(world_pos.x, world_pos.y, world_pos.z, 1.0);
+    // out_color = camera.pos;
 }

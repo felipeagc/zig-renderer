@@ -16,6 +16,7 @@ irradiance_image: *rg.Image,
 radiance_image: *rg.Image,
 brdf_image: *rg.Image,
 radiance_sampler: *rg.Sampler,
+irradiance_sampler: *rg.Sampler,
 camera: Camera,
 cube_mesh: Mesh,
 
@@ -148,10 +149,22 @@ pub fn init(allocator: *Allocator) !*App {
 
     var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/papermill.ktx");
     engine.device.setObjectName(.Image, skybox_image.image, "Skybox image");
-    var irradiance_image = try ibl_baker.generateCubemap(.Irradiance, skybox_image.image, null);
+    var irradiance_mip_levels: u32 = undefined;
+    var irradiance_image = try ibl_baker.generateCubemap(.Irradiance, skybox_image.image, &irradiance_mip_levels);
     var radiance_mip_levels: u32 = undefined;
     var radiance_image = try ibl_baker.generateCubemap(.Radiance, skybox_image.image, &radiance_mip_levels);
     var brdf_image = try ibl_baker.generateBrdfLut();
+
+    var irradiance_sampler = engine.device.createSampler(&rg.SamplerInfo{
+        .anisotropy = true,
+        .max_anisotropy = 16.0,
+        .min_filter = .Linear,
+        .mag_filter = .Linear,
+        .min_lod = 0.0,
+        .max_lod = @intToFloat(f32, irradiance_mip_levels),
+        .address_mode = .ClampToEdge,
+        .border_color = .FloatOpaqueWhite,
+    }) orelse return error.GpuObjectCreateError;
 
     var radiance_sampler = engine.device.createSampler(&rg.SamplerInfo{
         .anisotropy = true,
@@ -180,6 +193,7 @@ pub fn init(allocator: *Allocator) !*App {
         .radiance_image = radiance_image,
         .brdf_image = brdf_image,
         .radiance_sampler = radiance_sampler,
+        .irradiance_sampler = irradiance_sampler,
     };
     return self;
 }
@@ -189,6 +203,7 @@ pub fn deinit(self: *App) void {
     self.engine.device.destroyImage(self.radiance_image);
     self.engine.device.destroyImage(self.brdf_image);
     self.engine.device.destroySampler(self.radiance_sampler);
+    self.engine.device.destroySampler(self.irradiance_sampler);
     self.cube_mesh.deinit();
     self.graph.destroy();
     self.asset_manager.deinit();
@@ -214,7 +229,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
         @sizeOf(@TypeOf(self.camera.uniform)),
         @ptrCast(*c_void, &self.camera.uniform));
 
-    cb.bindSampler(0, 1, self.engine.default_sampler);
+    cb.bindSampler(0, 1, self.irradiance_sampler);
     cb.bindSampler(1, 1, self.radiance_sampler);
     cb.bindImage(2, 1, self.irradiance_image);
     cb.bindImage(3, 1, self.radiance_image);

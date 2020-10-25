@@ -38,7 +38,7 @@ const MaterialUniform = extern struct {
     emissive_factor: [4]f32 = [4]f32{1.0, 1.0, 1.0, 1.0},
     metallic: f32 = 1.0,
     roughness: f32 = 1.0,
-    normal_mapped: f32 = 0.0,
+    is_normal_mapped: u32 = 0,
 };
 
 const Material = struct {
@@ -650,8 +650,8 @@ fn drawNode(
             if (material_set_maybe) |material_set| {
                 if (primitive.material_index) |material_index| {
                     var material = &self.materials[material_index];
-                    material.uniform.normal_mapped = 
-                        if (primitive.is_normal_mapped) 1.0 else 0.0;
+                    material.uniform.is_normal_mapped = 
+                        if (primitive.is_normal_mapped) 1 else 0;
 
                     cb.setUniform(0, material_set,
                         @sizeOf(@TypeOf(material.uniform)),
