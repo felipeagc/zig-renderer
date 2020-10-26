@@ -51,6 +51,8 @@ pub const IBLBaker = struct {
     }
 
     pub fn generateBrdfLut(self: *IBLBaker) !*rg.Image {
+        std.log.info("Generating BRDF LuT", .{});
+
         var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
             orelse return error.GpuObjectCreateError;
         defer graph.destroy();
@@ -101,6 +103,11 @@ pub const IBLBaker = struct {
         skybox: *rg.Image,
         out_mip_levels: ?*u32
     ) !*rg.Image {
+        switch (cubemap_type) {
+            .Radiance => std.log.info("Generating radiance cubemap", .{}),
+            .Irradiance => std.log.info("Generating irradiance cubemap", .{}),
+        }
+
         self.current_type = cubemap_type;
         self.current_skybox = skybox;
         defer self.current_skybox = null;

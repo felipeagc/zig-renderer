@@ -147,7 +147,7 @@ pub fn init(allocator: *Allocator) !*App {
     var ibl_baker = try IBLBaker.init(engine);
     defer ibl_baker.deinit();
 
-    var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/papermill.ktx");
+    var skybox_image = try asset_manager.loadFileZstd(ImageAsset, "assets/papermill.ktx.zst");
     engine.device.setObjectName(.Image, skybox_image.image, "Skybox image");
     var irradiance_mip_levels: u32 = undefined;
     var irradiance_image = try ibl_baker.generateCubemap(.Irradiance, skybox_image.image, &irradiance_mip_levels);

@@ -79,6 +79,7 @@ pub fn build(b: *Builder) !void {
     renderer_lib.addCSourceFile(
         "thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
     renderer_lib.addCSourceFile("thirdparty/cgltf/cgltf.c", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/zstd/zstddeclib.c", &[_][]u8{});
 
     const renderer_test = b.addTest("src/tests.zig");
 

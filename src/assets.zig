@@ -2,6 +2,7 @@ usingnamespace @import("./common.zig");
 const AutoHashMap = std.AutoHashMap;
 const ArrayList = std.ArrayList;
 const Engine = @import("./Engine.zig").Engine;
+const zstd = @import("./zstd.zig");
 
 const Sha1 = std.crypto.hash.Sha1;
 const AssetHash = [20]u8;
@@ -54,6 +55,24 @@ pub const AssetManager = struct {
         defer self.alloc.free(data);
 
         var result = self.load(T, data);
+        return result;
+    }
+
+    pub fn loadFileZstd(self: *AssetManager, comptime T: type, path: []const u8) !*T {
+        var file = try std.fs.cwd().openFile(path, .{});
+        defer file.close();
+
+        var stat = try file.stat();
+
+        var data = try file.reader().readAllAlloc(self.alloc, stat.size);
+        defer self.alloc.free(data);
+
+        std.log.info("decompressing " ++ @typeName(T) ++ ": {}", .{path});
+
+        var decompressed_data = try zstd.decompressAlloc(self.alloc, data);
+        defer self.alloc.free(decompressed_data);
+
+        var result = self.load(T, decompressed_data);
         return result;
     }
 
