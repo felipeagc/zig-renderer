@@ -35,5 +35,5 @@ void vertex(
 void pixel(in float2 uv : TEXCOORD, out float4 out_color : SV_Target)
 {
 	float3 albedo_color = albedo.Sample(texture_sampler, uv).rgb;
-	out_color = float4(albedo_color.r, albedo_color.g, albedo_color.b, 1.0);
+	out_color = float4(albedo_color, 1.0);
 }

@@ -31,7 +31,7 @@ void vertex(
     view[1][3] = 0.0;
     view[2][3] = 0.0;
 
-    out_pos = mul(mul(camera.proj, view), float4(pos.x, pos.y, pos.z, 1));
+    out_pos = mul(mul(camera.proj, view), float4(pos, 1));
 	out_uvw = pos;
 }
 

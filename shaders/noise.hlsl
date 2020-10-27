@@ -71,8 +71,7 @@ void vertex(
 	out float2 out_uv : TEXCOORD0)
 {
 	out_uv = float2(float((vertexIndex << 1) & 2), float(vertexIndex & 2));
-	float2 temp = out_uv * 2.0 - 1.0;
-    out_pos = float4(temp.x, temp.y, 0.0, 1.0);
+    out_pos = float4(out_uv * 2.0 - 1.0, 0.0, 1.0);
 }
 
 void pixel(
@@ -85,5 +84,5 @@ void pixel(
 
 	float3 col = palette(pow(pattern(p), 2.0));
 
-	fragColor = float4(col.r, col.g, col.b, 1.0);
+	fragColor = float4(col, 1.0);
 }

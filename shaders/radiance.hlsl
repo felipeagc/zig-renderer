@@ -29,7 +29,7 @@ void vertex(
 {
     out_uvw = pos;
     out_uvw.y = out_uvw.y * -1.0;
-    out_pos = mul(uniform_data.mvp, float4(pos.x, pos.y, pos.z, 1.0));
+    out_pos = mul(uniform_data.mvp, float4(pos, 1.0));
 }
 
 // Based omn
@@ -134,5 +134,5 @@ void pixel(
 {
     float3 N = normalize(uvw);
     float3 col = prefilter_env_map(N, uniform_data.roughness);
-    out_color = float4(col.r, col.g, col.b, 1.0);
+    out_color = float4(col, 1.0);
 }

@@ -84,7 +84,7 @@ float4 srgb_to_linear(float4 srgb_in)
         srgb_in.xyz / 12.92,
         pow((srgb_in.xyz + 0.055) / 1.055, float3(2.4, 2.4, 2.4)),
         b_less);
-    return float4(lin_out.r, lin_out.g, lin_out.b, srgb_in.a);
+    return float4(lin_out, srgb_in.a);
 }
 
 float3 uncharted2_tonemap(float3 color)
@@ -104,7 +104,7 @@ float4 tonemap(float4 color, float exposure)
     float3 outcol = uncharted2_tonemap(color.rgb * exposure);
     outcol = outcol * (1.0 / uncharted2_tonemap(float3(11.2, 11.2, 11.2)));
 	outcol = pow(outcol, float3(1.0 / GAMMA, 1.0 / GAMMA, 1.0 / GAMMA));
-    return float4(outcol.r, outcol.g, outcol.b, color.a);
+    return float4(outcol, color.a);
 }
 
 float3 specular_reflection(PBRInfo pbr_inputs, LightInfo light_info)
@@ -171,17 +171,15 @@ void vertex(
 	out float3 out_world_pos  : POSITION,
 	out float3x3 out_tbn : TBN_MATRIX)
 {
-    float4 loc_pos = mul(model.model, float4(pos.x, pos.y, pos.z, 1));
+    float4 loc_pos = mul(model.model, float4(pos, 1));
 	loc_pos = loc_pos / loc_pos.w;
 
     out_world_pos = loc_pos.xyz;
 	out_uv = uv;
     if (material.is_normal_mapped != 0)
     {
-        float3 T = normalize(mul(model.model,
-                    float4(tangent.x, tangent.y, tangent.z, 0.0f)).xyz);
-        float3 N = normalize(mul(model.model,
-                    float4(normal.x, normal.y, normal.z, 0.0f)).xyz);
+        float3 T = normalize(mul(model.model, float4(tangent.xyz, 0.0f)).xyz);
+        float3 N = normalize(mul(model.model, float4(normal, 0.0f)).xyz);
         T = normalize(T - dot(T, N) * N); // re-orthogonalize
         float3 B = tangent.w * cross(N, T);
         out_tbn[0] = T;
@@ -281,7 +279,5 @@ void pixel(
     Lo = Lo * occlusion;
     Lo = Lo + emissive;
 
-	out_color = float4(Lo.r, Lo.g, Lo.b, albedo.a);
-    // out_color = float4(world_pos.x, world_pos.y, world_pos.z, 1.0);
-    // out_color = camera.pos;
+	out_color = float4(Lo, albedo.a);
 }

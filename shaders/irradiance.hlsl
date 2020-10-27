@@ -23,7 +23,7 @@ void vertex(
 {
     out_uvw = pos;
     out_uvw.y = out_uvw.y * -1.0;
-    out_pos = mul(uniform_data.mvp, float4(pos.x, pos.y, pos.z, 1.0));
+    out_pos = mul(uniform_data.mvp, float4(pos, 1.0));
 }
 
 void pixel(
@@ -55,5 +55,5 @@ void pixel(
     }
 
     color = PI * color / float(sample_count);
-    out_color = float4(color.x, color.y, color.z, 1.0);
+    out_color = float4(color, 1.0);
 }
