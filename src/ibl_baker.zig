@@ -53,7 +53,7 @@ pub const IBLBaker = struct {
     pub fn generateBrdfLut(self: *IBLBaker) !*rg.Image {
         std.log.info("Generating BRDF LuT", .{});
 
-        var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
+        var graph = rg.Graph.create()
             orelse return error.GpuObjectCreateError;
         defer graph.destroy();
 
@@ -89,7 +89,12 @@ pub const IBLBaker = struct {
         var main_pass = graph.addPass(.Graphics, main_callback);
         graph.passUseResource(main_pass, brdf_ref, .Undefined, .ColorAttachment);
 
-        graph.build();
+        graph.build(self.engine.device, &rg.GraphInfo{
+            .user_data = @ptrCast(*c_void, self),
+
+            .width = 0,
+            .height = 0,
+        });
 
         graph.execute();
         graph.waitAll();
@@ -144,8 +149,7 @@ pub const IBLBaker = struct {
             out_mips.* = self.current_mip_count;
         }
 
-        var graph = rg.Graph.create(self.engine.device, @ptrCast(*c_void, self), null)
-            orelse return error.GpuObjectCreateError;
+        var graph = rg.Graph.create() orelse return error.GpuObjectCreateError;
         defer graph.destroy();
 
         self.current_graph = graph;
@@ -191,7 +195,12 @@ pub const IBLBaker = struct {
         graph.passUseResource(transfer_pass, offscreen_ref, .ColorAttachment, .TransferSrc);
         graph.passUseResource(transfer_pass, cubemap_ref, .TransferDst, .TransferDst);
 
-        graph.build();
+        graph.build(self.engine.device, &rg.GraphInfo{
+            .user_data = @ptrCast(*c_void, self),
+
+            .width = 0,
+            .height = 0,
+        });
 
         var m: u32 = 0;
         while (m < self.current_mip_count) : (m += 1) {

@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const options = @import("src/options.zig");
 const mem = std.mem;
 const Builder = std.build.Builder;
 const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
@@ -55,8 +56,12 @@ pub fn build(b: *Builder) !void {
     renderer_lib.linkSystemLibrary("c++");
 
     if (target.getOs().tag == .linux) {
-        renderer_lib.linkSystemLibrary("X11");
-        renderer_lib.linkSystemLibrary("Xau");
+        if (options.use_wayland) {
+            renderer_lib.linkSystemLibrary("wayland-client");
+        } else {
+            renderer_lib.linkSystemLibrary("X11");
+            renderer_lib.linkSystemLibrary("Xau");
+        }
     }
 
     if (target.getOs().tag == .windows) {
@@ -68,8 +73,19 @@ pub fn build(b: *Builder) !void {
         renderer_lib.linkSystemLibrary("shlwapi");
     }
 
-    renderer_lib.addCSourceFile(
-        "thirdparty/glfw/glfw_unity.c", &[_][]u8{});
+    if (target.getOs().tag == .linux) {
+        if (options.use_wayland) {
+            renderer_lib.addCSourceFile(
+                "thirdparty/glfw/glfw_unity.c", &[_][]const u8{"-D_GLFW_WAYLAND"});
+        } else {
+            renderer_lib.addCSourceFile(
+                "thirdparty/glfw/glfw_unity.c", &[_][]const u8{"-D_GLFW_X11"});
+        }
+    } else {
+        renderer_lib.addCSourceFile(
+            "thirdparty/glfw/glfw_unity.c", &[_][]u8{});
+    }
+
     renderer_lib.addCSourceFile(
         "thirdparty/rendergraph/rendergraph/vk_mem_alloc.cpp", &[_][]const u8{"-w"});
     renderer_lib.addCSourceFile(

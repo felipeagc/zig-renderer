@@ -14,7 +14,7 @@ sampler: *rg.Sampler,
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-    self.graph.resize();
+    self.graph.resize(@intCast(u32, width), @intCast(u32, height));
 
     std.log.info("window resized", .{});
 }
@@ -37,9 +37,7 @@ pub fn init(allocator: *Allocator) !*App {
     var post_pipeline = try asset_manager.load(
         PipelineAsset, @embedFile("../shaders/post.hlsl"));
 
-    var graph = rg.Graph.create(
-        engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
-        orelse return error.InitFail;
+    var graph = rg.Graph.create() orelse return error.InitFail;
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
@@ -58,7 +56,14 @@ pub fn init(allocator: *Allocator) !*App {
     var backbuffer_pass = graph.addPass(.Graphics, backbufferPassCallback);
     graph.passUseResource(backbuffer_pass, color_res, .ColorAttachment, .Sampled);
 
-    graph.build();
+    var window_size = engine.getWindowSize();
+    graph.build(engine.device, &rg.GraphInfo{
+        .user_data = @ptrCast(*c_void, self),
+        .window = &try engine.getWindowInfo(),
+
+        .width = window_size.width,
+        .height = window_size.height,
+    });
 
     var sampler = engine.device.createSampler(&rg.SamplerInfo{
         .mag_filter = rg.Filter.Linear,

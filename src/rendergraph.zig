@@ -76,14 +76,39 @@ pub const PassRef = extern struct {
     index: u32
 };
 
+pub const WindowSystem = extern enum(u32) {
+    None,
+    Win32,
+    X11,
+    Wayland,
+};
+
+pub const DeviceInfo =  extern struct {
+    enable_validation: bool,
+    window_system: WindowSystem,
+};
+
 pub const PlatformWindowInfo = extern struct {
     x11: extern struct {
+        window: ?*c_void = null,
+        display: ?*c_void = null,
+    },
+    wl: extern struct {
         window: ?*c_void = null,
         display: ?*c_void = null,
     },
     win32: extern struct {
         window: ?*c_void = null,
     },
+};
+
+pub const GraphInfo = extern struct {
+    // Dimensions can be zero if not using a swapchain
+    width: u32,
+    height: u32,
+
+    user_data: ?*c_void = null,
+    window: ?*PlatformWindowInfo = null,
 };
 
 pub const Format = extern enum(c_int) {
@@ -368,7 +393,7 @@ pub const ObjectType = extern enum(i32) {
     Buffer = 2,
 };
 
-extern fn rgDeviceCreate() ?*Device;
+extern fn rgDeviceCreate(info: *DeviceInfo) ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
 
 extern fn rgObjectSetName(device: *Device, type: ObjectType, object: *c_void, name: [*:0]const u8) void;
@@ -392,16 +417,16 @@ extern fn rgBufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: 
 extern fn rgPipelineCreate(device: *Device, info: *const PipelineInfo) ?*Pipeline;
 extern fn rgPipelineDestroy(device: *Device, pipeline: *Pipeline) void;
 
-extern fn rgGraphCreate(device: *Device, user_data: ?*c_void, window: ?*const PlatformWindowInfo) ?*Graph;
+extern fn rgGraphCreate() ?*Graph;
 extern fn rgGraphAddPass(graph: *Graph, type: PassType, callback: ?PassCallback) PassRef;
 extern fn rgGraphAddImage(graph: *Graph, info: *const GraphImageInfo) ResourceRef;
 extern fn rgGraphAddBuffer(graph: *Graph, info: *const BufferInfo) ResourceRef;
 extern fn rgGraphAddExternalImage(graph: *Graph, image: *Image) ResourceRef;
 extern fn rgGraphAddExternalBuffer(graph: *Graph, buffer: *Buffer) ResourceRef;
 extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: ResourceRef, pre_usage: ResourceUsage, post_usage: ResourceUsage) void;
-extern fn rgGraphBuild(graph: *Graph) void;
+extern fn rgGraphBuild(graph: *Graph, device: *Device, info: *GraphInfo) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
-extern fn rgGraphResize(graph: *Graph) void;
+extern fn rgGraphResize(graph: *Graph, width: u32, height: u32) void;
 extern fn rgGraphExecute(graph: *Graph) void;
 extern fn rgGraphWaitAll(graph: *Graph) void;
 extern fn rgGraphGetBuffer(graph: *Graph, res: ResourceRef) *Buffer;

@@ -112,7 +112,7 @@ const Camera = struct {
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-    self.graph.resize();
+    self.graph.resize(@intCast(u32, width), @intCast(u32, height));
 
     std.log.info("window resized", .{});
 }
@@ -130,9 +130,7 @@ pub fn init(allocator: *Allocator) !*App {
     var asset_manager = try AssetManager.init(engine);
     errdefer asset_manager.deinit();
 
-    var graph = rg.Graph.create(
-        engine.device, @ptrCast(*c_void, self), &try engine.getWindowInfo())
-        orelse return error.InitFail;
+    var graph = rg.Graph.create() orelse return error.InitFail;
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
@@ -142,7 +140,14 @@ pub fn init(allocator: *Allocator) !*App {
     var main_pass = graph.addPass(.Graphics, mainPassCallback);
     graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
 
-    graph.build();
+    var window_size = engine.getWindowSize();
+    graph.build(engine.device, &rg.GraphInfo{
+        .user_data = @ptrCast(*c_void, self),
+        .window = &try engine.getWindowInfo(),
+
+        .width = window_size.width,
+        .height = window_size.height,
+    });
 
     var ibl_baker = try IBLBaker.init(engine);
     defer ibl_baker.deinit();
