@@ -5,8 +5,8 @@ pub const App = @This();
 allocator: *Allocator,
 engine: *Engine,
 asset_manager: *AssetManager,
-noise_pipeline: *PipelineAsset,
-post_pipeline: *PipelineAsset,
+noise_pipeline: *GraphicsPipelineAsset,
+post_pipeline: *GraphicsPipelineAsset,
 graph: *rg.Graph,
 noise_image_res: rg.ResourceRef,
 sampler: *rg.Sampler,
@@ -32,10 +32,10 @@ pub fn init(allocator: *Allocator) !*App {
     errdefer asset_manager.deinit();
 
     var noise_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/noise.hlsl"));
+        GraphicsPipelineAsset, @embedFile("../shaders/noise.hlsl"));
 
     var post_pipeline = try asset_manager.load(
-        PipelineAsset, @embedFile("../shaders/post.hlsl"));
+        GraphicsPipelineAsset, @embedFile("../shaders/post.hlsl"));
 
     var graph = rg.Graph.create() orelse return error.InitFail;
 

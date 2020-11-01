@@ -2,7 +2,8 @@ pub const Device = opaque {
     pub const create = rgDeviceCreate;
     pub const destroy = rgDeviceDestroy;
 
-    pub const createPipeline = rgPipelineCreate;
+    pub const createGraphicsPipeline = rgGraphicsPipelineCreate;
+    pub const createComputePipeline = rgComputePipelineCreate;
     pub const destroyPipeline = rgPipelineDestroy;
 
     pub const createBuffer = rgBufferCreate;
@@ -275,7 +276,7 @@ pub const PipelineDepthStencilState = extern struct {
     bias_enable: bool,
 };
 
-pub const PipelineInfo = extern struct {
+pub const GraphicsPipelineInfo = extern struct {
     polygon_mode: PolygonMode,
     cull_mode: CullMode,
     front_face: FrontFace,
@@ -293,6 +294,15 @@ pub const PipelineInfo = extern struct {
     fragment: [*c]u8 = null,
     fragment_size: usize = 0,
     fragment_entry: [*c]const u8 = null,
+};
+
+pub const ComputePipelineInfo = extern struct {
+    num_bindings: u32 = 0,
+    bindings: [*c]PipelineBinding = null,
+
+    code: [*c]u8 = null,
+    code_size: usize = 0,
+    entry: [*c]const u8 = null,
 };
 
 pub const ResourceUsage = extern enum(c_int) {
@@ -414,7 +424,8 @@ extern fn rgBufferMap(device: *Device, buffer: *Buffer) ?*c_void;
 extern fn rgBufferUnmap(device: *Device, buffer: *Buffer) void;
 extern fn rgBufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: usize, data: *c_void) void;
 
-extern fn rgPipelineCreate(device: *Device, info: *const PipelineInfo) ?*Pipeline;
+extern fn rgGraphicsPipelineCreate(device: *Device, info: *const GraphicsPipelineInfo) ?*Pipeline;
+extern fn rgComputePipelineCreate(device: *Device, info: *const ComputePipelineInfo) ?*Pipeline;
 extern fn rgPipelineDestroy(device: *Device, pipeline: *Pipeline) void;
 
 extern fn rgGraphCreate() ?*Graph;
@@ -461,5 +472,14 @@ pub const ExtCompiledShader = extern struct {
     entry_point: [*c]const u8,
 };
 
-pub extern fn rgExtPipelineCreateWithShaders(device: *Device, vertex_shader: [*c]ExtCompiledShader, fragment_shader: [*c]ExtCompiledShader, info: [*c]PipelineInfo) ?*Pipeline;
-pub const extPipelineCreateWithShaders = rgExtPipelineCreateWithShaders;
+extern fn rgExtGraphicsPipelineCreateWithShaders(
+    device: *Device,
+    vertex_shader: [*c]ExtCompiledShader,
+    fragment_shader: [*c]ExtCompiledShader,
+    info: [*c]GraphicsPipelineInfo) ?*Pipeline;
+pub const extGraphicsPipelineCreateWithShaders = rgExtGraphicsPipelineCreateWithShaders;
+
+extern fn rgExtComputePipelineCreateWithShaders(
+    device: *Device,
+    shader: [*c]ExtCompiledShader) ?*Pipeline;
+pub const extComputePipelineCreateWithShaders = rgExtComputePipelineCreateWithShaders;

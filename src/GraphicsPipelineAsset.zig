@@ -5,7 +5,7 @@ const Engine = @import("./Engine.zig").Engine;
 const ts = @import("tinyshader.zig");
 
 const Self = @This();
-pub const PipelineAsset = Self;
+pub const GraphicsPipelineAsset = Self;
 
 engine: *Engine,
 pipeline: *rg.Pipeline = null,
@@ -19,7 +19,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     var frag_spirv = try compileShaderAlloc(allocator, "pixel", .Fragment, data);
     defer allocator.free(frag_spirv);
 
-    var options = try parsePipelineOptions(data);
+    var options = try parseGraphicsPipelineOptions(data);
 
     var vert_shader = rg.ExtCompiledShader{
         .code = &vert_spirv[0],
@@ -33,7 +33,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         .entry_point = "pixel",
     };
 
-    var pipeline = rg.extPipelineCreateWithShaders(
+    var pipeline = rg.extGraphicsPipelineCreateWithShaders(
         engine.device, &vert_shader, &frag_shader, &options) 
         orelse return error.ShaderCompilationFailed;
 
@@ -139,8 +139,8 @@ fn boolFromString(str: []const u8) !bool {
     }
 }
 
-fn parsePipelineOptions(shader_source: []const u8) !rg.PipelineInfo {
-    var info = rg.PipelineInfo{
+fn parseGraphicsPipelineOptions(shader_source: []const u8) !rg.GraphicsPipelineInfo {
+    var info = rg.GraphicsPipelineInfo{
         .polygon_mode = .Fill,
         .cull_mode = .None,
         .front_face = .Clockwise,

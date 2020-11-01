@@ -1,7 +1,7 @@
 usingnamespace @import("./common.zig");
 usingnamespace @import("./math.zig");
 const Engine = @import("./Engine.zig").Engine;
-const PipelineAsset = @import("./PipelineAsset.zig").PipelineAsset;
+const GraphicsPipelineAsset = @import("./GraphicsPipelineAsset.zig").GraphicsPipelineAsset;
 const Mesh = @import("./mesh.zig").Mesh;
 
 const CubemapType = enum {
@@ -11,9 +11,9 @@ const CubemapType = enum {
 
 pub const IBLBaker = struct {
     engine: *Engine,
-    irradiance_pipeline: *PipelineAsset,
-    radiance_pipeline: *PipelineAsset,
-    brdf_pipeline: *PipelineAsset,
+    irradiance_pipeline: *GraphicsPipelineAsset,
+    radiance_pipeline: *GraphicsPipelineAsset,
+    brdf_pipeline: *GraphicsPipelineAsset,
     skybox_sampler: ?*rg.Sampler = null,
     cube_mesh: Mesh,
     current_mip: u32 = 0,
@@ -29,11 +29,11 @@ pub const IBLBaker = struct {
     pub fn init(engine: *Engine) !IBLBaker {
         return IBLBaker{
             .engine = engine,
-            .irradiance_pipeline = try PipelineAsset.init(engine,
+            .irradiance_pipeline = try GraphicsPipelineAsset.init(engine,
                 @embedFile("../shaders/irradiance.hlsl")),
-            .radiance_pipeline = try PipelineAsset.init(engine,
+            .radiance_pipeline = try GraphicsPipelineAsset.init(engine,
                 @embedFile("../shaders/radiance.hlsl")),
-            .brdf_pipeline = try PipelineAsset.init(engine,
+            .brdf_pipeline = try GraphicsPipelineAsset.init(engine,
                 @embedFile("../shaders/brdf.hlsl")),
             .cube_mesh = try Mesh.initCube(engine.device),
         };
