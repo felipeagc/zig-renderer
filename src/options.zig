@@ -1,1 +1,1 @@
-pub const use_wayland = false;
+pub const use_wayland = true;

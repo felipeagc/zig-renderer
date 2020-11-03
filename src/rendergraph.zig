@@ -1,6 +1,7 @@
 pub const Device = opaque {
     pub const create = rgDeviceCreate;
     pub const destroy = rgDeviceDestroy;
+    pub const getSupportedDepthFormat = rgDeviceGetSupportedDepthFormat;
 
     pub const createGraphicsPipeline = rgGraphicsPipelineCreate;
     pub const createComputePipeline = rgComputePipelineCreate;
@@ -114,6 +115,7 @@ pub const GraphInfo = extern struct {
 
 pub const Format = extern enum(c_int) {
     Undefined = 0,
+
     Rgb8Unorm = 1,
     Rgba8Unorm = 2,
     R32Uint = 3,
@@ -122,10 +124,15 @@ pub const Format = extern enum(c_int) {
     Rgb32Sfloat = 6,
     Rgba32Sfloat = 7,
     Rgba16Sfloat = 8,
-    D32Sfloat = 9,
-    D24UnormS8Uint = 10,
-    Bc7Unorm = 11,
-    Bc7Srgb = 12,
+
+    D32SfloatS8Uint = 9,
+    D32Sfloat = 10,
+    D24UnormS8Uint = 11,
+    D16UnormS8Uint = 12,
+    D16Unorm = 13,
+
+    Bc7Unorm = 14,
+    Bc7Srgb = 15,
     _,
 };
 
@@ -405,6 +412,7 @@ pub const ObjectType = extern enum(i32) {
 
 extern fn rgDeviceCreate(info: *DeviceInfo) ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
+extern fn rgDeviceGetSupportedDepthFormat(device: *Device) Format;
 
 extern fn rgObjectSetName(device: *Device, type: ObjectType, object: *c_void, name: [*:0]const u8) void;
 

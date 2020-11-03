@@ -41,7 +41,7 @@ pub fn init(allocator: *Allocator) !*App {
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
-        .format = .D24UnormS8Uint,
+        .format = engine.device.getSupportedDepthFormat(),
     });
 
     var color_res = graph.addImage(&rg.GraphImageInfo{

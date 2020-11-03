@@ -134,12 +134,12 @@ pub fn init(allocator: *Allocator) !*App {
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
-        .format = .D24UnormS8Uint,
+        .format = engine.device.getSupportedDepthFormat(),
     });
 
     var main_pass = graph.addPass(.Graphics, mainPassCallback);
-    graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
 
+    graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
     var window_size = engine.getWindowSize();
     graph.build(engine.device, &rg.GraphInfo{
         .user_data = @ptrCast(*c_void, self),
