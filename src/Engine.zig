@@ -22,6 +22,7 @@ device: *rg.Device,
 white_image: *rg.Image,
 black_image: *rg.Image,
 default_sampler: *rg.Sampler,
+main_cmd_pool: *rg.CmdPool,
 user_data: ?*c_void = null,
 on_resize: ?fn(?*c_void, i32, i32) void = null,
 
@@ -73,6 +74,8 @@ pub fn init(alloc: *Allocator) !*Engine {
     };
     var device = rg.Device.create(&device_info) orelse return error.InitFail;
 
+    var main_cmd_pool = device.createCmdPool() orelse return error.GpuObjectCreateError;
+
     var image_info = rg.ImageInfo{
         .width = 1,
         .height = 1,
@@ -85,7 +88,9 @@ pub fn init(alloc: *Allocator) !*Engine {
     var black_image = device.createImage(&image_info) orelse return error.GpuObjectCreateError;
 
     var white_data = [_]u8{255, 255, 255, 255};
-    device.uploadImage(&rg.ImageCopy{
+    device.uploadImage(
+        main_cmd_pool,
+        &rg.ImageCopy{
             .image = white_image,
             .mip_level = 0,
             .array_layer = 0,
@@ -96,7 +101,9 @@ pub fn init(alloc: *Allocator) !*Engine {
         &white_data[0]);
 
     var black_data = [_]u8{0, 0, 0, 255};
-    device.uploadImage(&rg.ImageCopy{
+    device.uploadImage(
+        main_cmd_pool,
+        &rg.ImageCopy{
             .image = white_image,
             .mip_level = 0,
             .array_layer = 0,
@@ -106,14 +113,16 @@ pub fn init(alloc: *Allocator) !*Engine {
         @sizeOf(@TypeOf(black_data)),
         &black_data[0]);
 
-    var default_sampler = device.createSampler(&rg.SamplerInfo{
-        .anisotropy = true,
-        .max_anisotropy = 16.0,
-        .min_filter = .Linear,
-        .mag_filter = .Linear,
-        .address_mode = .Repeat,
-        .border_color = .FloatOpaqueWhite,
-    }) orelse return error.GpuObjectCreateError;
+    var default_sampler = device.createSampler(
+        &rg.SamplerInfo{
+            .anisotropy = true,
+            .max_anisotropy = 16.0,
+            .min_filter = .Linear,
+            .mag_filter = .Linear,
+            .address_mode = .Repeat,
+            .border_color = .FloatOpaqueWhite,
+        }
+    ) orelse return error.GpuObjectCreateError;
 
     self.* = Engine{
         .alloc = alloc,
@@ -122,6 +131,7 @@ pub fn init(alloc: *Allocator) !*Engine {
         .white_image = white_image,
         .black_image = black_image,
         .default_sampler = default_sampler,
+        .main_cmd_pool = main_cmd_pool,
     };
 
     return self;
@@ -134,6 +144,7 @@ pub fn deinit(self: *Engine) void {
     self.device.destroyImage(self.white_image);
     self.device.destroyImage(self.black_image);
     self.device.destroySampler(self.default_sampler);
+    self.device.destroyCmdPool(self.main_cmd_pool);
     self.device.destroy();
     self.alloc.destroy(self);
 }

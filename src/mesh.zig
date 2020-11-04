@@ -9,7 +9,7 @@ pub const Mesh = struct {
     index_count: usize,
     index_buffer: *rg.Buffer,
 
-    pub fn initCube(device: *rg.Device) !Mesh {
+    pub fn initCube(device: *rg.Device, cmd_pool: *rg.CmdPool) !Mesh {
         var positions = [8]Vec3{
             Vec3.init( 0.5, 0.5,  0.5),
             Vec3.init(-0.5, 0.5,  0.5),
@@ -54,8 +54,8 @@ pub const Mesh = struct {
             .memory = .Device,
         }) orelse return error.GpuObjectCreateError;
 
-        device.uploadBuffer(vertex_buffer, 0, @sizeOf(@TypeOf(positions)), &positions[0]);
-        device.uploadBuffer(index_buffer, 0, @sizeOf(@TypeOf(indices)), &indices[0]);
+        device.uploadBuffer(cmd_pool, vertex_buffer, 0, @sizeOf(@TypeOf(positions)), &positions[0]);
+        device.uploadBuffer(cmd_pool, index_buffer, 0, @sizeOf(@TypeOf(indices)), &indices[0]);
 
         return Mesh{
             .vertex_buffer = vertex_buffer,

@@ -141,13 +141,17 @@ pub fn init(allocator: *Allocator) !*App {
 
     graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
     var window_size = engine.getWindowSize();
-    graph.build(engine.device, &rg.GraphInfo{
-        .user_data = @ptrCast(*c_void, self),
-        .window = &try engine.getWindowInfo(),
+    graph.build(
+        engine.device,
+        engine.main_cmd_pool,
+        &rg.GraphInfo{
+            .user_data = @ptrCast(*c_void, self),
+            .window = &try engine.getWindowInfo(),
 
-        .width = window_size.width,
-        .height = window_size.height,
-    });
+            .width = window_size.width,
+            .height = window_size.height,
+        }
+    );
 
     var ibl_baker = try IBLBaker.init(engine);
     defer ibl_baker.deinit();
@@ -189,7 +193,7 @@ pub fn init(allocator: *Allocator) !*App {
 
         .graph = graph,
         .camera = .{},
-        .cube_mesh = try Mesh.initCube(engine.device),
+        .cube_mesh = try Mesh.initCube(engine.device, engine.main_cmd_pool),
         .model_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/model.hlsl"),
         .skybox_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/skybox.hlsl"),
         .model = try asset_manager.loadFile(GltfAsset, "assets/DamagedHelmet.glb"),

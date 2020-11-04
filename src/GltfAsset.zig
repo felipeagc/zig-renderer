@@ -162,6 +162,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             }) orelse return error.GpuObjectCreateError;
 
             engine.device.uploadImage(
+                engine.main_cmd_pool,
                 &rg.ImageCopy{ .image = image.* },
                 &rg.Extent3D{ 
                     .width = @intCast(u32, width),
@@ -172,14 +173,19 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
                 image_data,
             );
 
-            engine.device.imageBarrier(image.*, &rg.ImageRegion{
-                .base_mip_level = 0,
-                .mip_count = 1,
-                .base_array_layer = 0,
-                .layer_count = 1,
-            }, .Sampled, .TransferSrc);
+            engine.device.imageBarrier(
+                engine.main_cmd_pool,
+                image.*,
+                &rg.ImageRegion{
+                    .base_mip_level = 0,
+                    .mip_count = 1,
+                    .base_array_layer = 0,
+                    .layer_count = 1,
+                },
+                .Sampled,
+                .TransferSrc);
 
-            engine.device.generateMipMaps(image.*);
+            engine.device.generateMipMaps(engine.main_cmd_pool, image.*);
 
             max_lod = std.math.max(max_lod, @intToFloat(f32, mip_count));
         } else {
@@ -510,8 +516,8 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         .size = index_buffer_size,
     }) orelse return error.GpuObjectCreateError;
 
-    engine.device.uploadBuffer(vertex_buffer, 0, vertex_buffer_size, @ptrCast(*c_void, vertices.items.ptr));
-    engine.device.uploadBuffer(index_buffer, 0, index_buffer_size, @ptrCast(*c_void, indices.items.ptr));
+    engine.device.uploadBuffer(engine.main_cmd_pool, vertex_buffer, 0, vertex_buffer_size, @ptrCast(*c_void, vertices.items.ptr));
+    engine.device.uploadBuffer(engine.main_cmd_pool, index_buffer, 0, index_buffer_size, @ptrCast(*c_void, indices.items.ptr));
 
     var nodes = try allocator.alloc(Node, gltf_data.nodes_count);
     for (nodes) |*node, i| {

@@ -52,6 +52,7 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
             for (level.layers) |layer, l| {
                 for (layer.faces) |face, f| {
                     engine.device.uploadImage(
+                        engine.main_cmd_pool,
                         &rg.ImageCopy{
                             .image = image.?,
                             .mip_level = @intCast(u32, m),

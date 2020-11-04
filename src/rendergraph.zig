@@ -3,6 +3,9 @@ pub const Device = opaque {
     pub const destroy = rgDeviceDestroy;
     pub const getSupportedDepthFormat = rgDeviceGetSupportedDepthFormat;
 
+    pub const createCmdPool = rgCmdPoolCreate;
+    pub const destroyCmdPool = rgCmdPoolDestroy;
+
     pub const createGraphicsPipeline = rgGraphicsPipelineCreate;
     pub const createComputePipeline = rgComputePipelineCreate;
     pub const destroyPipeline = rgPipelineDestroy;
@@ -28,6 +31,7 @@ pub const Pipeline = opaque {};
 pub const Buffer = opaque {};
 pub const Image = opaque {};
 pub const Sampler = opaque {};
+pub const CmdPool = opaque {};
 pub const CmdBuffer = opaque {
     pub const setViewport = rgCmdSetViewport;
     pub const setScissor = rgCmdSetScissor;
@@ -414,13 +418,16 @@ extern fn rgDeviceCreate(info: *DeviceInfo) ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
 extern fn rgDeviceGetSupportedDepthFormat(device: *Device) Format;
 
+extern fn rgCmdPoolCreate(device: *Device) ?*CmdPool;
+extern fn rgCmdPoolDestroy(device: *Device, cmd_pool: *CmdPool) void;
+
 extern fn rgObjectSetName(device: *Device, type: ObjectType, object: *c_void, name: [*:0]const u8) void;
 
 extern fn rgImageCreate(device: *Device, info: *const ImageInfo) ?*Image;
 extern fn rgImageDestroy(device: *Device, image: *Image) void;
-extern fn rgImageUpload(device: *Device, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *const c_void) void;
-extern fn rgImageBarrier(device: *Device, image: *Image, region: *const ImageRegion, from: ResourceUsage, to: ResourceUsage) void;
-extern fn rgImageGenerateMipMaps(device: *Device, image: *Image) void;
+extern fn rgImageUpload(device: *Device, cmd_pool: *CmdPool, dst: *const ImageCopy, extent: *const Extent3D, size: usize, data: *const c_void) void;
+extern fn rgImageBarrier(device: *Device, cmd_pool: *CmdPool, image: *Image, region: *const ImageRegion, from: ResourceUsage, to: ResourceUsage) void;
+extern fn rgImageGenerateMipMaps(device: *Device, cmd_pool: *CmdPool, image: *Image) void;
 
 
 extern fn rgSamplerCreate(device: *Device, info: *const SamplerInfo) ?*Sampler;
@@ -430,7 +437,7 @@ extern fn rgBufferCreate(device: *Device, info: *const BufferInfo) ?*Buffer;
 extern fn rgBufferDestroy(device: *Device, buffer: *Buffer) void;
 extern fn rgBufferMap(device: *Device, buffer: *Buffer) ?*c_void;
 extern fn rgBufferUnmap(device: *Device, buffer: *Buffer) void;
-extern fn rgBufferUpload(device: *Device, buffer: *Buffer, offset: usize, size: usize, data: *c_void) void;
+extern fn rgBufferUpload(device: *Device, cmd_pool: *CmdPool, buffer: *Buffer, offset: usize, size: usize, data: *c_void) void;
 
 extern fn rgGraphicsPipelineCreate(device: *Device, info: *const GraphicsPipelineInfo) ?*Pipeline;
 extern fn rgComputePipelineCreate(device: *Device, info: *const ComputePipelineInfo) ?*Pipeline;
@@ -443,7 +450,7 @@ extern fn rgGraphAddBuffer(graph: *Graph, info: *const BufferInfo) ResourceRef;
 extern fn rgGraphAddExternalImage(graph: *Graph, image: *Image) ResourceRef;
 extern fn rgGraphAddExternalBuffer(graph: *Graph, buffer: *Buffer) ResourceRef;
 extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: ResourceRef, pre_usage: ResourceUsage, post_usage: ResourceUsage) void;
-extern fn rgGraphBuild(graph: *Graph, device: *Device, info: *GraphInfo) void;
+extern fn rgGraphBuild(graph: *Graph, device: *Device, cmd_pool: *CmdPool, info: *GraphInfo) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
 extern fn rgGraphResize(graph: *Graph, width: u32, height: u32) void;
 extern fn rgGraphExecute(graph: *Graph) void;

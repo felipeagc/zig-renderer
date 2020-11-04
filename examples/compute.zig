@@ -6,6 +6,7 @@ pub const App = @This();
 
 allocator: *Allocator,
 device: *rg.Device,
+cmd_pool: *rg.CmdPool,
 pipeline: *rg.Pipeline,
 graph: *rg.Graph,
 
@@ -18,6 +19,8 @@ pub fn init(allocator: *Allocator) !*App {
         .window_system = .None,
     };
     var device = rg.Device.create(&device_info) orelse return error.InitFail;
+
+    var cmd_pool = device.createCmdPool() orelse return error.InitFail;
 
     var spirv = try compileShaderAlloc(
         allocator, "main", @embedFile("../shaders/compute.hlsl"));
@@ -36,16 +39,20 @@ pub fn init(allocator: *Allocator) !*App {
 
     var pass = graph.addPass(.Compute, callback);
 
-    graph.build(device, &rg.GraphInfo{
-        .width = 0,
-        .height = 0,
+    graph.build(
+        device,
+        cmd_pool,
+        &rg.GraphInfo{
+            .width = 0,
+            .height = 0,
 
-        .user_data = @ptrCast(*c_void, self),
-    });
+            .user_data = @ptrCast(*c_void, self),
+        });
 
     self.* = .{
         .allocator = allocator,
         .device = device,
+        .cmd_pool = cmd_pool,
         .pipeline = pipeline,
         .graph = graph,
     };
@@ -62,6 +69,7 @@ fn callback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 pub fn deinit(self: *App) void {
     self.graph.destroy();
     self.device.destroyPipeline(self.pipeline);
+    self.device.destroyCmdPool(self.cmd_pool);
     self.device.destroy();
     self.allocator.destroy(self);
 }

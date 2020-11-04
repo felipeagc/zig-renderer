@@ -57,13 +57,17 @@ pub fn init(allocator: *Allocator) !*App {
     graph.passUseResource(backbuffer_pass, color_res, .ColorAttachment, .Sampled);
 
     var window_size = engine.getWindowSize();
-    graph.build(engine.device, &rg.GraphInfo{
-        .user_data = @ptrCast(*c_void, self),
-        .window = &try engine.getWindowInfo(),
+    graph.build(
+        engine.device,
+        engine.main_cmd_pool,
+        &rg.GraphInfo{
+            .user_data = @ptrCast(*c_void, self),
+            .window = &try engine.getWindowInfo(),
 
-        .width = window_size.width,
-        .height = window_size.height,
-    });
+            .width = window_size.width,
+            .height = window_size.height,
+        }
+    );
 
     var sampler = engine.device.createSampler(&rg.SamplerInfo{
         .mag_filter = rg.Filter.Linear,

@@ -35,7 +35,7 @@ pub const IBLBaker = struct {
                 @embedFile("../shaders/radiance.hlsl")),
             .brdf_pipeline = try GraphicsPipelineAsset.init(engine,
                 @embedFile("../shaders/brdf.hlsl")),
-            .cube_mesh = try Mesh.initCube(engine.device),
+            .cube_mesh = try Mesh.initCube(engine.device, engine.main_cmd_pool),
         };
     }
 
@@ -89,12 +89,15 @@ pub const IBLBaker = struct {
         var main_pass = graph.addPass(.Graphics, main_callback);
         graph.passUseResource(main_pass, brdf_ref, .Undefined, .ColorAttachment);
 
-        graph.build(self.engine.device, &rg.GraphInfo{
-            .user_data = @ptrCast(*c_void, self),
+        graph.build(
+            self.engine.device,
+            self.engine.main_cmd_pool,
+            &rg.GraphInfo{
+                .user_data = @ptrCast(*c_void, self),
 
-            .width = 0,
-            .height = 0,
-        });
+                .width = 0,
+                .height = 0,
+            });
 
         graph.execute();
         graph.waitAll();
@@ -178,12 +181,17 @@ pub const IBLBaker = struct {
             cubemap_image,
             if (cubemap_type == .Irradiance) "Irradiance cubemap" else "Radiance cubemap");
 
-        self.engine.device.imageBarrier(cubemap_image, &rg.ImageRegion{
-            .base_mip_level = 0,
-            .mip_count = self.current_mip_count,
-            .base_array_layer = 0,
-            .layer_count = 6,
-        }, .Undefined, .TransferDst);
+        self.engine.device.imageBarrier(
+            self.engine.main_cmd_pool,
+            cubemap_image,
+            &rg.ImageRegion{
+                .base_mip_level = 0,
+                .mip_count = self.current_mip_count,
+                .base_array_layer = 0,
+                .layer_count = 6,
+            },
+            .Undefined,
+            .TransferDst);
 
         var cubemap_ref = graph.addExternalImage(cubemap_image);
         self.current_cubemap_ref = cubemap_ref;
@@ -195,12 +203,15 @@ pub const IBLBaker = struct {
         graph.passUseResource(transfer_pass, offscreen_ref, .ColorAttachment, .TransferSrc);
         graph.passUseResource(transfer_pass, cubemap_ref, .TransferDst, .TransferDst);
 
-        graph.build(self.engine.device, &rg.GraphInfo{
-            .user_data = @ptrCast(*c_void, self),
+        graph.build(
+            self.engine.device,
+            self.engine.main_cmd_pool,
+            &rg.GraphInfo{
+                .user_data = @ptrCast(*c_void, self),
 
-            .width = 0,
-            .height = 0,
-        });
+                .width = 0,
+                .height = 0,
+            });
 
         var m: u32 = 0;
         while (m < self.current_mip_count) : (m += 1) {
@@ -213,12 +224,15 @@ pub const IBLBaker = struct {
             }
         }
 
-        self.engine.device.imageBarrier(cubemap_image, &rg.ImageRegion{
-            .base_mip_level = 0,
-            .mip_count = self.current_mip_count,
-            .base_array_layer = 0,
-            .layer_count = 6,
-        }, .TransferDst, .Sampled);
+        self.engine.device.imageBarrier(
+            self.engine.main_cmd_pool,
+            cubemap_image,
+            &rg.ImageRegion{
+                .base_mip_level = 0,
+                .mip_count = self.current_mip_count,
+                .base_array_layer = 0,
+                .layer_count = 6,
+            }, .TransferDst, .Sampled);
 
         return cubemap_image;
     }
