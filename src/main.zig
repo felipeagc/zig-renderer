@@ -10,3 +10,4 @@ pub const GltfAsset = @import("./GltfAsset.zig").GltfAsset;
 pub const ImageAsset = @import("./ImageAsset.zig").ImageAsset;
 pub const Mesh = @import("./mesh.zig").Mesh;
 pub const IBLBaker = @import("./ibl_baker.zig").IBLBaker;
+pub const Watcher = @import("./watcher.zig").Watcher;

@@ -11,9 +11,9 @@ const CubemapType = enum {
 
 pub const IBLBaker = struct {
     engine: *Engine,
-    irradiance_pipeline: *GraphicsPipelineAsset,
-    radiance_pipeline: *GraphicsPipelineAsset,
-    brdf_pipeline: *GraphicsPipelineAsset,
+    irradiance_pipeline: GraphicsPipelineAsset,
+    radiance_pipeline: GraphicsPipelineAsset,
+    brdf_pipeline: GraphicsPipelineAsset,
     skybox_sampler: ?*rg.Sampler = null,
     cube_mesh: Mesh,
     current_mip: u32 = 0,
@@ -27,14 +27,19 @@ pub const IBLBaker = struct {
     current_mip_count: u32 = 0,
 
     pub fn init(engine: *Engine) !IBLBaker {
+        var irradiance_pipeline: GraphicsPipelineAsset = undefined;
+        var radiance_pipeline: GraphicsPipelineAsset = undefined;
+        var brdf_pipeline: GraphicsPipelineAsset = undefined;
+
+        try irradiance_pipeline.init(engine, @embedFile("../shaders/irradiance.hlsl"));
+        try radiance_pipeline.init(engine, @embedFile("../shaders/radiance.hlsl"));
+        try brdf_pipeline.init(engine, @embedFile("../shaders/brdf.hlsl"));
+
         return IBLBaker{
             .engine = engine,
-            .irradiance_pipeline = try GraphicsPipelineAsset.init(engine,
-                @embedFile("../shaders/irradiance.hlsl")),
-            .radiance_pipeline = try GraphicsPipelineAsset.init(engine,
-                @embedFile("../shaders/radiance.hlsl")),
-            .brdf_pipeline = try GraphicsPipelineAsset.init(engine,
-                @embedFile("../shaders/brdf.hlsl")),
+            .irradiance_pipeline = irradiance_pipeline,
+            .radiance_pipeline = radiance_pipeline,
+            .brdf_pipeline = brdf_pipeline,
             .cube_mesh = try Mesh.initCube(engine.device, engine.main_cmd_pool),
         };
     }

@@ -10,7 +10,9 @@ pub const GraphicsPipelineAsset = Self;
 engine: *Engine,
 pipeline: *rg.Pipeline = null,
 
-pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
+pub fn init(self_opaque: *c_void, engine: *Engine, data: []const u8) anyerror!void {
+    var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
+
     const allocator = engine.alloc;
 
     var vert_spirv = try compileShaderAlloc(allocator, "vertex", .Vertex, data);
@@ -37,18 +39,15 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         engine.device, &vert_shader, &frag_shader, &options) 
         orelse return error.ShaderCompilationFailed;
 
-    var self = try allocator.create(@This());
     self.* = Self{
         .engine = engine,
         .pipeline = pipeline,
     };
-    return self;
 }
 
 pub fn deinit(self_opaque: *c_void) void {
     var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     self.engine.device.destroyPipeline(self.pipeline);
-    self.engine.alloc.destroy(self);
 }
 
 fn compileShaderAlloc(

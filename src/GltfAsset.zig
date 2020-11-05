@@ -104,7 +104,8 @@ const Node = struct {
     }
 };
 
-pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
+pub fn init(self_opaque: *c_void, engine: *Engine, data: []const u8) anyerror!void {
+    var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     const allocator = engine.alloc;
 
     var gltf_options = cgltf_options{ .type = cgltf_file_type.glb };
@@ -584,7 +585,6 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         }
     }
 
-    var self = try allocator.create(@This());
     self.* = Self{
         .engine = engine,
         .images = images,
@@ -601,8 +601,6 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
     for (self.nodes) |*node| {
         node.matrix = node.resolveMatrix(self);
     }
-
-    return self;
 }
 
 pub fn deinit(self_opaque: *c_void) void {
@@ -634,8 +632,6 @@ pub fn deinit(self_opaque: *c_void) void {
     self.engine.alloc.free(self.nodes);
 
     self.root_nodes.deinit();
-
-    self.engine.alloc.destroy(self);
 }
 
 fn drawNode(

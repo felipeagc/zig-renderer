@@ -127,7 +127,7 @@ pub fn init(allocator: *Allocator) !*App {
     engine.on_resize = onResize;
     engine.setCursorEnabled(false);
 
-    var asset_manager = try AssetManager.init(engine);
+    var asset_manager = try AssetManager.init(engine, .{.watch = true});
     errdefer asset_manager.deinit();
 
     var graph = rg.Graph.create() orelse return error.InitFail;
@@ -156,7 +156,7 @@ pub fn init(allocator: *Allocator) !*App {
     var ibl_baker = try IBLBaker.init(engine);
     defer ibl_baker.deinit();
 
-    var skybox_image = try asset_manager.loadFileZstd(ImageAsset, "assets/papermill.ktx.zst");
+    var skybox_image = try asset_manager.loadFile(ImageAsset, "assets/papermill.ktx.zst");
     engine.device.setObjectName(.Image, skybox_image.image, "Skybox image");
     var irradiance_mip_levels: u32 = undefined;
     var irradiance_image = try ibl_baker.generateCubemap(.Irradiance, skybox_image.image, &irradiance_mip_levels);
@@ -250,6 +250,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
+        self.asset_manager.refreshAssets();
         self.graph.execute();
 
         if (self.last_time > 0) {

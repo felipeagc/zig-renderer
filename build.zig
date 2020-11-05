@@ -105,4 +105,5 @@ pub fn build(b: *Builder) !void {
     try addExample(b, "noise");
     try addExample(b, "model");
     try addExample(b, "compute");
+    try addExample(b, "test_watcher");
 }

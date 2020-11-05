@@ -28,14 +28,14 @@ pub fn init(allocator: *Allocator) !*App {
     engine.user_data = @ptrCast(*c_void, self);
     engine.on_resize = onResize;
 
-    var asset_manager = try AssetManager.init(engine);
+    var asset_manager = try AssetManager.init(engine, .{.watch = true});
     errdefer asset_manager.deinit();
 
-    var noise_pipeline = try asset_manager.load(
-        GraphicsPipelineAsset, @embedFile("../shaders/noise.hlsl"));
+    var noise_pipeline = try asset_manager.loadFile(
+        GraphicsPipelineAsset, "./shaders/noise.hlsl");
 
-    var post_pipeline = try asset_manager.load(
-        GraphicsPipelineAsset, @embedFile("../shaders/post.hlsl"));
+    var post_pipeline = try asset_manager.loadFile(
+        GraphicsPipelineAsset, "./shaders/post.hlsl");
 
     var graph = rg.Graph.create() orelse return error.InitFail;
 
@@ -135,6 +135,7 @@ fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) vo
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
+        self.asset_manager.refreshAssets();
         self.graph.execute();
     }
 }

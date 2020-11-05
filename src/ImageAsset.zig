@@ -10,9 +10,10 @@ pub const ImageAsset = Self;
 engine: *Engine,
 image: *rg.Image,
 
-pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
-    const allocator = engine.alloc;
+pub fn init(self_opaque: *c_void, engine: *Engine, data: []const u8) anyerror!void {
+    var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
 
+    const allocator = engine.alloc;
     var image: ?*rg.Image = null;
 
     if (data.len >= ktx1_identifier.len 
@@ -74,16 +75,13 @@ pub fn init(engine: *Engine, data: []const u8) anyerror!*Self {
         return error.ImageAssetUnknownFileType;
     }
 
-    var self = try allocator.create(Self);
     self.* = .{
         .engine = engine,
         .image = image orelse return error.ImageAssetLoadFail,
     };
-    return self;
 }
 
 pub fn deinit(self_opaque: *c_void) void {
     var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     self.engine.device.destroyImage(self.image);
-    self.engine.alloc.destroy(self);
 }

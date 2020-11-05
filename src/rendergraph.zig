@@ -1,6 +1,7 @@
 pub const Device = opaque {
     pub const create = rgDeviceCreate;
     pub const destroy = rgDeviceDestroy;
+    pub const waitIdle = rgDeviceWaitIdle;
     pub const getSupportedDepthFormat = rgDeviceGetSupportedDepthFormat;
 
     pub const createCmdPool = rgCmdPoolCreate;
@@ -416,6 +417,7 @@ pub const ObjectType = extern enum(i32) {
 
 extern fn rgDeviceCreate(info: *DeviceInfo) ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
+extern fn rgDeviceWaitIdle(device: *Device) void;
 extern fn rgDeviceGetSupportedDepthFormat(device: *Device) Format;
 
 extern fn rgCmdPoolCreate(device: *Device) ?*CmdPool;
