@@ -3,6 +3,8 @@ pub usingnamespace @import("./math.zig");
 pub const tinyshader = @import("./tinyshader.zig");
 pub const Engine = @import("./Engine.zig").Engine;
 pub const Key = @import("./Engine.zig").Key;
+pub const Action = @import("./Engine.zig").Action;
+pub const Mod = @import("./Engine.zig").Mod;
 pub const AssetManager = @import("./assets.zig").AssetManager;
 pub const GraphicsPipelineAsset = @import("./GraphicsPipelineAsset.zig").GraphicsPipelineAsset;
 pub const ComputePipelineAsset = @import("./ComputePipelineAsset.zig").ComputePipelineAsset;

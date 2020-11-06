@@ -53,15 +53,17 @@ const Camera = struct {
         var aspect = @intToFloat(f32, window_size.width)
             / @intToFloat(f32, window_size.height);
 
-        var dx = cursor_pos.x - self.prev_x;
-        var dy = cursor_pos.y - self.prev_y;
+        if (!engine.getCursorEnabled()) {
+            var dx = cursor_pos.x - self.prev_x;
+            var dy = cursor_pos.y - self.prev_y;
 
-        self.prev_x = cursor_pos.x;
-        self.prev_y = cursor_pos.y;
+            self.prev_x = cursor_pos.x;
+            self.prev_y = cursor_pos.y;
 
-        self.yaw -= @floatCast(f32, dx) * self.sensitivity * (std.math.pi / 180.0);
-        self.pitch -= @floatCast(f32, dy) * self.sensitivity * (std.math.pi / 180.0);
-        self.pitch = clamp(self.pitch, -89.0 * (std.math.pi / 180.0), 89.0 * (std.math.pi / 180.0));
+            self.yaw -= @floatCast(f32, dx) * self.sensitivity * (std.math.pi / 180.0);
+            self.pitch -= @floatCast(f32, dy) * self.sensitivity * (std.math.pi / 180.0);
+            self.pitch = clamp(self.pitch, -89.0 * (std.math.pi / 180.0), 89.0 * (std.math.pi / 180.0));
+        }
 
         var front = Vec3.init(
             sin(self.yaw) * cos(self.pitch),
@@ -117,6 +119,15 @@ fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     std.log.info("window resized", .{});
 }
 
+fn onKeyPress(user_data: ?*c_void, key: Key, action: Action, mods: u32) void {
+    if (user_data == null) return;
+    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
+
+    if (key == .Escape and action == .Press) {
+        self.engine.setCursorEnabled(!self.engine.getCursorEnabled());
+    }
+}
+
 pub fn init(allocator: *Allocator) !*App {
     var self = try allocator.create(App);
     errdefer allocator.destroy(self);
@@ -125,6 +136,7 @@ pub fn init(allocator: *Allocator) !*App {
     // errdefer engine.deinit();
     engine.user_data = @ptrCast(*c_void, self);
     engine.on_resize = onResize;
+    engine.on_key_press = onKeyPress;
     engine.setCursorEnabled(false);
 
     var asset_manager = try AssetManager.init(engine, .{.watch = true});

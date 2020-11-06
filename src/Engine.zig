@@ -25,6 +25,7 @@ default_sampler: *rg.Sampler,
 main_cmd_pool: *rg.CmdPool,
 user_data: ?*c_void = null,
 on_resize: ?fn(?*c_void, i32, i32) void = null,
+on_key_press: ?fn(?*c_void, Key, Action, u32) void = null,
 
 fn onResizeGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
     var self: *Engine = @ptrCast(*Engine, 
@@ -32,6 +33,25 @@ fn onResizeGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C
 
     if (self.on_resize) |on_resize| {
         on_resize(self.user_data, @as(i32, width), @as(i32, height));
+    }
+}
+
+fn onKeyPressGLFW(
+    window: ?*c.GLFWwindow,
+    key: c_int,
+    scancode: c_int,
+    action: c_int,
+    mods: c_int,
+) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    if (self.on_key_press) |on_key_press| {
+        on_key_press(
+            self.user_data,
+            @intToEnum(Key, key),
+            @intToEnum(Action, action),
+            @intCast(u32, mods));
     }
 }
 
@@ -64,6 +84,7 @@ pub fn init(alloc: *Allocator) !*Engine {
         orelse return error.InitFail;
     c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, self));
     _ = c.glfwSetWindowSizeCallback(window, onResizeGLFW);
+    _ = c.glfwSetKeyCallback(window, onKeyPressGLFW);
 
     var device_info = rg.DeviceInfo{
         .enable_validation = true,
@@ -173,6 +194,11 @@ pub fn setCursorEnabled(self: *Engine, enabled: bool) void {
     c.glfwSetInputMode(self.window, c.GLFW_CURSOR, mode);
 }
 
+pub fn getCursorEnabled(self: *Engine) bool {
+    var mode = c.glfwGetInputMode(self.window, c.GLFW_CURSOR);
+    return mode == c.GLFW_CURSOR_NORMAL;
+}
+
 pub fn getCursorPos(self: *Engine) struct{x: f64, y: f64} {
     var xpos: f64 = undefined;
     var ypos: f64 = undefined;
@@ -188,6 +214,21 @@ pub fn getKeyState(self: *Engine, key: Key) bool {
         else => return false,
     }
 }
+
+pub const Action = enum(i32) {
+    Release = 0,
+    Press = 1,
+    Repeat = 2,
+};
+
+pub const Mod = struct {
+    pub const Shift = 0x0001;
+    pub const Control = 0x0002;
+    pub const Alt = 0x0004;
+    pub const Super = 0x0008;
+    pub const CapsLock = 0x0010;
+    pub const NumLock = 0x0020;
+};
 
 pub const Key = enum(i32) {
     Space        = 32,
