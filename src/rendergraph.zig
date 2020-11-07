@@ -42,6 +42,8 @@ pub const CmdBuffer = opaque {
     pub const bindImageSampler = rgCmdBindImageSampler;
     pub const bindVertexBuffer = rgCmdBindVertexBuffer;
     pub const bindIndexBuffer = rgCmdBindIndexBuffer;
+    pub const bindStorageBuffer = rgCmdBindStorageBuffer;
+    pub const bindUniformBuffer = rgCmdBindUniformBuffer;
     pub const setUniform = rgCmdSetUniform;
     pub const setVertices = rgCmdSetVertices;
     pub const setIndices = rgCmdSetIndices;
@@ -468,6 +470,10 @@ extern fn rgCmdBindSampler(cb: *CmdBuffer, binding: u32, set: u32, sampler: *Sam
 extern fn rgCmdBindImageSampler(cb: *CmdBuffer, binding: u32, set: u32, image: *Image, sampler: *Sampler) void;
 extern fn rgCmdBindVertexBuffer(cb: *CmdBuffer, buffer: *Buffer, offset: usize) void;
 extern fn rgCmdBindIndexBuffer(cb: *CmdBuffer, index_type: IndexType, buffer: *Buffer, offset: usize) void;
+extern fn rgCmdBindStorageBuffer(
+    cb: *CmdBuffer, binding: u32, set: u32, buffer: *Buffer, offset: usize, range: usize) void;
+extern fn rgCmdBindUniformBuffer(
+    cb: *CmdBuffer, binding: u32, set: u32, buffer: *Buffer, offset: usize, range: usize) void;
 extern fn rgCmdSetUniform(cb: *CmdBuffer, binding: u32, set: u32, size: usize, data: *c_void) void;
 extern fn rgCmdSetVertices(cb: *CmdBuffer, size: usize, data: *c_void) void;
 extern fn rgCmdSetIndices(cb: *CmdBuffer, index_type: IndexType, size: usize, data: *c_void) void;

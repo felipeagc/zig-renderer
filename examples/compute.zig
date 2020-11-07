@@ -9,6 +9,8 @@ device: *rg.Device,
 cmd_pool: *rg.CmdPool,
 pipeline: *rg.Pipeline,
 graph: *rg.Graph,
+buffer: *rg.Buffer,
+array: *[32_000_000]f32,
 
 pub fn init(allocator: *Allocator) !*App {
     var self = try allocator.create(App);
@@ -21,6 +23,19 @@ pub fn init(allocator: *Allocator) !*App {
     var device = rg.Device.create(&device_info) orelse return error.InitFail;
 
     var cmd_pool = device.createCmdPool() orelse return error.InitFail;
+
+    var array: *[32_000_000]f32 = try allocator.create([32_000_000]f32);
+    for (array) |*elem| {
+        elem.* = 1.0;
+    }
+
+    var buffer = device.createBuffer(&rg.BufferInfo{
+        .size = @sizeOf(@TypeOf(array.*)),
+        .usage = rg.BufferUsage.Storage | rg.BufferUsage.TransferSrc | rg.BufferUsage.TransferDst,
+        .memory = .Host,
+    }) orelse return error.InitFail;
+
+    device.uploadBuffer(cmd_pool, buffer, 0, @sizeOf(@TypeOf(array.*)), array);
 
     var spirv = try compileShaderAlloc(
         allocator, "main", @embedFile("../shaders/compute.hlsl"));
@@ -55,6 +70,8 @@ pub fn init(allocator: *Allocator) !*App {
         .cmd_pool = cmd_pool,
         .pipeline = pipeline,
         .graph = graph,
+        .buffer = buffer,
+        .array = array,
     };
 
     return self;
@@ -63,10 +80,13 @@ pub fn init(allocator: *Allocator) !*App {
 fn callback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     var self = @ptrCast(*@This(), @alignCast(@alignOf(@This()), user_data));
     cb.bindPipeline(self.pipeline);
-    cb.dispatch(1, 1, 1);
+    cb.bindStorageBuffer(0, 0, self.buffer, 0, 0);
+    cb.dispatch(256, 1, 1);
 }
 
 pub fn deinit(self: *App) void {
+    self.allocator.destroy(self.array);
+    self.device.destroyBuffer(self.buffer);
     self.graph.destroy();
     self.device.destroyPipeline(self.pipeline);
     self.device.destroyCmdPool(self.cmd_pool);
