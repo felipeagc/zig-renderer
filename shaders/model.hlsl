@@ -102,7 +102,7 @@ float3 uncharted2_tonemap(float3 color)
 float4 tonemap(float4 color, float exposure)
 {
     float3 outcol = uncharted2_tonemap(color.rgb * exposure);
-    outcol = outcol * (1.0 / uncharted2_tonemap(float3(11.2, 11.2, 11.2)));
+    outcol *= (1.0 / uncharted2_tonemap(11.2));
 	outcol = pow(outcol, float3(1.0 / GAMMA, 1.0 / GAMMA, 1.0 / GAMMA));
     return float4(outcol, color.a);
 }
@@ -172,7 +172,7 @@ void vertex(
 	out float3x3 out_tbn : TBN_MATRIX)
 {
     float4 loc_pos = mul(model.model, float4(pos, 1));
-	loc_pos = loc_pos / loc_pos.w;
+	loc_pos /= loc_pos.w;
 
     out_world_pos = loc_pos.xyz;
 	out_uv = uv;
@@ -218,9 +218,9 @@ void pixel(
     pbr_inputs.metallic = material.metallic * metallic_roughness.b;
     pbr_inputs.perceptual_roughness = material.roughness * metallic_roughness.g;
 
-    float3 f0 = float3(0.04, 0.04, 0.04);
+    float3 f0 = 0.04;
     pbr_inputs.diffuse_color = albedo.rgb * (1.0 - f0);
-    pbr_inputs.diffuse_color = pbr_inputs.diffuse_color * (1.0 - pbr_inputs.metallic);
+    pbr_inputs.diffuse_color *= (1.0 - pbr_inputs.metallic);
 
     pbr_inputs.alpha_roughness = pbr_inputs.perceptual_roughness * pbr_inputs.perceptual_roughness;
 
@@ -249,7 +249,7 @@ void pixel(
     pbr_inputs.R.y = -pbr_inputs.R.y;
     pbr_inputs.NdotV = clamp(abs(dot(pbr_inputs.N, pbr_inputs.V)), 0.001, 1.0);
 
-    float3 Lo = float3(0.0, 0.0, 0.0);
+    float3 Lo = 0.0;
 
     float3 diffuseOverPi = (pbr_inputs.diffuse_color / PI);
 
@@ -275,9 +275,9 @@ void pixel(
     //     Lo = Lo + color;
     // }
 
-    Lo = Lo + get_ibl_contribution(pbr_inputs);
-    Lo = Lo * occlusion;
-    Lo = Lo + emissive;
+    Lo += get_ibl_contribution(pbr_inputs);
+    Lo *= occlusion;
+    Lo += emissive;
 
 	out_color = float4(Lo, albedo.a);
 }

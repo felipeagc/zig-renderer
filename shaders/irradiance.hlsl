@@ -22,7 +22,7 @@ void vertex(
     out float3 out_uvw : TEXCOORD0)
 {
     out_uvw = pos;
-    out_uvw.y = out_uvw.y * -1.0;
+    out_uvw.y = -out_uvw.y;
     out_pos = mul(uniform_data.mvp, float4(pos, 1.0));
 }
 
@@ -41,7 +41,7 @@ void pixel(
     float delta_phi = (2.0 * PI) / 180.0;
     float delta_theta = (0.5 * PI) / 64.0;
 
-    float3 color = float3(0.0, 0.0, 0.0);
+    float3 color = 0.0;
     uint sample_count = 0;
     for (float phi = 0.0; phi < TWO_PI; phi = phi + delta_phi)
     {
@@ -49,7 +49,7 @@ void pixel(
         {
             float3 temp_vec = cos(phi) * right + sin(phi) * up;
             float3 sample_vector = cos(theta) * N + sin(theta) * temp_vec;
-            color = color + skybox.Sample(cube_sampler, sample_vector).rgb * cos(theta) * sin(theta);
+            color += skybox.Sample(cube_sampler, sample_vector).rgb * cos(theta) * sin(theta);
             sample_count++;
         }
     }

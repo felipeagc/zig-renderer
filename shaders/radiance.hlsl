@@ -87,11 +87,11 @@ float d_ggx(float NdotH, float roughness)
 
 float3 prefilter_env_map(float3 R, float roughness)
 {
-    uint num_samples = 32;
+    const uint num_samples = 32;
 
     float3 N = R;
     float3 V = R;
-    float3 color = float3(0.0, 0.0, 0.0);
+    float3 color = 0.0;
     float total_weight = 0.0;
     float width;
     float height;
@@ -121,11 +121,11 @@ float3 prefilter_env_map(float3 R, float roughness)
             // Biased (+1.0) mip level for better result
             float mip_level =
                 (roughness <= 0.01) ? 0.0 : max(0.5 * log2(omega_s / omega_p) + 1.0, 0.0f);
-            color = color + (skybox.SampleLevel(cube_sampler, L, mip_level).rgb * NdotL);
-            total_weight = total_weight + NdotL;
+            color += (skybox.SampleLevel(cube_sampler, L, mip_level).rgb * NdotL);
+            total_weight += NdotL;
         }
     }
-    return (color / total_weight);
+    return color / total_weight;
 }
 
 void pixel(

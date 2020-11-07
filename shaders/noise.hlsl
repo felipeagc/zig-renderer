@@ -60,7 +60,7 @@ float3 palette(float t)
 {
     float3 a = float3(0.5, 0.5, 0.5);
     float3 b = float3(0.45, 0.25, 0.14);
-    float3 c = float3(1.0 ,1.0, 1.0);
+    float3 c = float3(1.0,1.0, 1.0);
     float3 d = float3(0.0, 0.1, 0.2);
     return a + b * cos(6.28318 * (c * t + d));
 }
@@ -80,7 +80,7 @@ void pixel(
 	out float4 fragColor : SV_Target)
 {
 	float2 p = fragCoord.xy / gVariables.res.xy;
-	p.x = p.x * (gVariables.res.x / gVariables.res.y);
+	p.x *= (gVariables.res.x / gVariables.res.y);
 
 	float3 col = palette(pow(pattern(p), 2.0));
 
