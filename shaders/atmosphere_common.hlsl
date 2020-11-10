@@ -3,6 +3,7 @@
 
 // The scale depth (the altitude at which the average atmospheric density is found)
 #define SCALE_DEPTH 0.25
+#define INV_SCALE_DEPTH (1.0/0.25)
 
 struct Atmosphere
 {

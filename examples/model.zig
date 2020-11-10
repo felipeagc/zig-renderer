@@ -7,7 +7,7 @@ engine: *Engine,
 asset_manager: *AssetManager,
 
 model_pipeline: *GraphicsPipelineAsset,
-sky_from_atmosphere_pipeline: *GraphicsPipelineAsset,
+atmosphere_sky_pipeline: *GraphicsPipelineAsset,
 graph: *rg.Graph,
 
 model: *GltfAsset,
@@ -24,6 +24,8 @@ inner_atm_mesh: Mesh,
 
 last_time: f64 = 0.0,
 delta_time: f64 = 0.0,
+
+sun_angle: f64 = std.math.pi*0.8,
 
 const world_inner_radius = 50.0;
 const world_outer_radius = (10.25/10.0) * world_inner_radius;
@@ -271,8 +273,8 @@ pub fn init(allocator: *Allocator) !*App {
         .outer_atm_mesh = try Mesh.initSphere(engine, engine.main_cmd_pool, world_outer_radius, 360.0),
         .inner_atm_mesh = try Mesh.initSphere(engine, engine.main_cmd_pool, world_inner_radius, 360.0),
         .model_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/model.hlsl"),
-        .sky_from_atmosphere_pipeline =
-            try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/sky_from_atmosphere.hlsl"),
+        .atmosphere_sky_pipeline =
+            try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/atmosphere_sky.hlsl"),
         .model = try asset_manager.loadFile(GltfAsset, "assets/DamagedHelmet.glb"),
         .skybox_image = skybox_image,
         .irradiance_image = irradiance_image,
@@ -281,6 +283,13 @@ pub fn init(allocator: *Allocator) !*App {
         .radiance_sampler = radiance_sampler,
         .irradiance_sampler = irradiance_sampler,
     };
+
+    self.inner_atm_mesh.material.uniform.base_color_factor = Vec4.init(
+        65.0 / 255.0,
+        152.0 / 255.0,
+        10.0 / 255.0,
+        1.0,
+    );
     return self;
 }
 
@@ -304,14 +313,21 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 
     self.camera.update(self.engine, @floatCast(f32, self.delta_time));
 
+    self.sun_angle += self.delta_time * 0.1;
+    self.sun_angle = @mod(self.sun_angle, std.math.pi * 2.0);
+
     var atmosphere = Atmosphere.init(.{
         .camera_pos = self.camera.pos,
-        .sun_pos = Vec3.init(0.0, 0.0, 1000.0).normalize(),
+        .sun_pos = Vec3.init(
+            0.0,
+            @floatCast(f32, sin(self.sun_angle)),
+            @floatCast(f32, cos(self.sun_angle)),
+        ).normalize(),
         .inner_radius = world_inner_radius,
         .outer_radius = world_outer_radius,
     });
 
-    cb.bindPipeline(self.sky_from_atmosphere_pipeline.pipeline);
+    cb.bindPipeline(self.atmosphere_sky_pipeline.pipeline);
     cb.setUniform(0, 0,
         @sizeOf(@TypeOf(self.camera.uniform)),
         &self.camera.uniform);

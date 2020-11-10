@@ -19,9 +19,6 @@ struct Camera
 [[vk::binding(0, 0)]] ConstantBuffer<Camera> camera;
 [[vk::binding(1, 0)]] ConstantBuffer<Atmosphere> atm;
 
-// [[vk::binding(0, 1)]] SamplerState cube_sampler;
-// [[vk::binding(1, 1)]] TextureCube<float4> cube_texture;
-
 void vertex(
 	 in float3 pos     : POSITION,
 	 in float3 normal  : NORMAL,
@@ -37,11 +34,33 @@ void vertex(
 	float far = length(ray);
 	ray /= far;
 
-	float3 start = camera.pos.xyz;
-	float height = length(start);
-	float depth = exp(atm.scale_over_scale_depth * (atm.inner_radius - atm.camera_height));
-	float start_angle = dot(ray, start) / height;
-	float start_offset = depth * scale(start_angle);
+    float3 start;
+    float height;
+    float depth;
+    float start_offset;
+
+    if (length(camera.pos.xyz) >= atm.outer_radius)
+    {
+        // From space
+        float near = getNearIntersection(
+            camera.pos.xyz, ray, atm.camera_height_sq, atm.outer_radius_sq);
+
+        start = camera.pos.xyz + ray * near;
+        far -= near;
+        float start_angle = dot(ray, start) / atm.outer_radius;
+        float start_depth = exp(-INV_SCALE_DEPTH);
+        start_offset = start_depth * scale(start_angle);
+    }
+    else
+    {
+        // From atmosphere
+
+        start = camera.pos.xyz;
+        height = length(start);
+        depth = exp(atm.scale_over_scale_depth * (atm.inner_radius - atm.camera_height));
+        float start_angle = dot(ray, start) / height;
+        start_offset = depth * scale(start_angle);
+    }
 
 	float sample_length = far / float(NUM_SAMPLES);
 	float scaled_length = sample_length * atm.scale;
