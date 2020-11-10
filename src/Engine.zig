@@ -108,6 +108,9 @@ pub fn init(alloc: *Allocator) !*Engine {
     var white_image = device.createImage(&image_info) orelse return error.GpuObjectCreateError;
     var black_image = device.createImage(&image_info) orelse return error.GpuObjectCreateError;
 
+    device.setObjectName(.Image, white_image, "Engine: white image");
+    device.setObjectName(.Image, black_image, "Engine: black image");
+
     var white_data = [_]u8{255, 255, 255, 255};
     device.uploadImage(
         main_cmd_pool,
@@ -125,7 +128,7 @@ pub fn init(alloc: *Allocator) !*Engine {
     device.uploadImage(
         main_cmd_pool,
         &rg.ImageCopy{
-            .image = white_image,
+            .image = black_image,
             .mip_level = 0,
             .array_layer = 0,
             .offset = .{.x = 0, .y = 0, .z = 0},

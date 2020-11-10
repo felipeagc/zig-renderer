@@ -17,7 +17,10 @@ struct Uniform
 [[vk::binding(2, 0)]] TextureCube<float4> skybox;
 
 void vertex(
-    in float3 pos : POSITION,
+	 in float3 pos     : POSITION,
+	 in float3 normal  : NORMAL,
+	 in float4 tangent : TANGENT,
+	 in float2 uv      : TEXCOORD0,
     out float4 out_pos : SV_Position,
     out float3 out_uvw : TEXCOORD0)
 {

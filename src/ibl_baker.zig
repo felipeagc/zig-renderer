@@ -40,7 +40,7 @@ pub const IBLBaker = struct {
             .irradiance_pipeline = irradiance_pipeline,
             .radiance_pipeline = radiance_pipeline,
             .brdf_pipeline = brdf_pipeline,
-            .cube_mesh = try Mesh.initCube(engine.device, engine.main_cmd_pool),
+            .cube_mesh = try Mesh.initCube(engine, engine.main_cmd_pool),
         };
     }
 
@@ -281,7 +281,7 @@ pub const IBLBaker = struct {
         cb.bindSampler(1, 0, self.skybox_sampler.?);
         cb.bindImage(2, 0, self.current_skybox.?);
 
-        self.cube_mesh.draw(cb);
+        self.cube_mesh.draw(cb, null, null, null);
     }
 
     fn transferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {

@@ -1,9 +1,8 @@
 // The number of sample points taken along the ray
-#define NUM_SAMPLES 2
+#define NUM_SAMPLES 3
 
 // The scale depth (the altitude at which the average atmospheric density is found)
-#define fScaleDepth 0.25
-#define fInvScaleDepth (1.0 / fScaleDepth)
+#define SCALE_DEPTH 0.25
 
 struct Atmosphere
 {
@@ -21,7 +20,7 @@ struct Atmosphere
     float Kr4PI;
     float Km4PI;
     float scale;
-    float scale_over_depth;
+    float scale_over_scale_depth;
     float g; // The Mie phase asymmetry factor
     float g_sq;
 };
@@ -31,7 +30,7 @@ struct Atmosphere
 float scale(float fCos)
 {
 	float x = 1.0 - fCos;
-	return fScaleDepth * exp(-0.00287 + x*(0.459 + x*(3.83 + x*(-6.80 + x*5.25))));
+	return SCALE_DEPTH * exp(-0.00287 + x*(0.459 + x*(3.83 + x*(-6.80 + x*5.25))));
 }
 
 // Calculates the Mie phase function

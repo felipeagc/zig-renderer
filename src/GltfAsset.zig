@@ -7,6 +7,8 @@ const ArrayList = std.ArrayList;
 usingnamespace @import("./cgltf.zig");
 usingnamespace @import("./stb_image.zig");
 
+usingnamespace @import("./pbr.zig");
+
 const Self = @This();
 pub const GltfAsset = @This();
 
@@ -25,40 +27,6 @@ vertex_buffer: *rg.Buffer,
 
 index_count: usize,
 index_buffer: *rg.Buffer,
-
-const Vertex = extern struct {
-    pos: [3]f32,
-    normal: [3]f32,
-    tangent: [4]f32,
-    uv: [2]f32,
-};
-
-const MaterialUniform = extern struct {
-    base_color_factor: [4]f32 = [4]f32{1.0, 1.0, 1.0, 1.0},
-    emissive_factor: [4]f32 = [4]f32{1.0, 1.0, 1.0, 1.0},
-    metallic: f32 = 1.0,
-    roughness: f32 = 1.0,
-    is_normal_mapped: u32 = 0,
-};
-
-const Material = struct {
-    uniform: MaterialUniform,
-
-    albedo_image: *rg.Image,
-    albedo_sampler: *rg.Sampler,
-
-    normal_image: *rg.Image,
-    normal_sampler: *rg.Sampler,
-
-    metallic_roughness_image: *rg.Image,
-    metallic_roughness_sampler: *rg.Sampler,
-
-    occlusion_image: *rg.Image,
-    occlusion_sampler: *rg.Sampler,
-
-    emissive_image: *rg.Image,
-    emissive_sampler: *rg.Sampler,
-};
 
 const Primitive = struct {
     first_index: u32,
@@ -234,24 +202,7 @@ pub fn init(
         var gltf_material: *cgltf_material = &gltf_data.materials[i];
         assert(gltf_material.has_pbr_metallic_roughness != 0);
 
-        material.* = Material{
-            .uniform = .{},
-
-            .albedo_image = engine.white_image,
-            .albedo_sampler = engine.default_sampler,
-
-            .normal_image = engine.white_image,
-            .normal_sampler = engine.default_sampler,
-
-            .metallic_roughness_image = engine.white_image,
-            .metallic_roughness_sampler = engine.default_sampler,
-
-            .occlusion_image = engine.white_image,
-            .occlusion_sampler = engine.default_sampler,
-
-            .emissive_image = engine.black_image,
-            .emissive_sampler = engine.default_sampler,
-        };
+        material.* = Material.default(engine);
 
         if (gltf_material.pbr_metallic_roughness.base_color_texture.texture) |texture| {
             var image_index = (@ptrToInt(texture.image) - @ptrToInt(gltf_data.images))
@@ -643,32 +594,27 @@ fn drawNode(
     self: *Self,
     cb: *rg.CmdBuffer,
     node: *Node,
-    transform: *const Mat4,
-    model_set: u32,
-    material_set_maybe: ?u32) void
+    transform: ?*const Mat4,
+    model_set_optional: ?u32,
+    material_set_optional: ?u32) void
 {
     if (node.mesh_index) |mesh_index| {
         var mesh: *Mesh = &self.meshes[mesh_index];
 
         for (mesh.primitives.items) |primitive| {
-            var model: Mat4 = node.matrix.mul(transform.*);
-            cb.setUniform(0, model_set, @sizeOf(@TypeOf(model)), @ptrCast(*c_void, &model));
+            if (model_set_optional) |model_set| {
+                std.debug.assert(transform != null);
+                var model: Mat4 = node.matrix.mul(transform.?.*);
+                cb.setUniform(0, model_set, @sizeOf(@TypeOf(model)), @ptrCast(*c_void, &model));
+            }
 
-            if (material_set_maybe) |material_set| {
+            if (material_set_optional) |material_set| {
                 if (primitive.material_index) |material_index| {
                     var material = &self.materials[material_index];
                     material.uniform.is_normal_mapped = 
                         if (primitive.is_normal_mapped) 1 else 0;
 
-                    cb.setUniform(0, material_set,
-                        @sizeOf(@TypeOf(material.uniform)),
-                        @ptrCast(*c_void, &material.uniform));
-                    cb.bindSampler(1, material_set, material.albedo_sampler);
-                    cb.bindImage(2, material_set, material.albedo_image);
-                    cb.bindImage(3, material_set, material.normal_image);
-                    cb.bindImage(4, material_set, material.metallic_roughness_image);
-                    cb.bindImage(5, material_set, material.occlusion_image);
-                    cb.bindImage(6, material_set, material.emissive_image);
+                    material.bind(cb, material_set);
                 }
             }
 
@@ -682,21 +628,21 @@ fn drawNode(
 
     for (node.children_indices.items) |child_index| {
         var child: *Node = &self.nodes[child_index];
-        self.drawNode(cb, child, transform, model_set, material_set_maybe);
+        self.drawNode(cb, child, transform, model_set_optional, material_set_optional);
     }
 }
 
 pub fn draw(
     self: *Self,
     cb: *rg.CmdBuffer,
-    transform: *const Mat4,
-    model_set: u32,
-    material_set: ?u32) void
-{
+    transform: ?*const Mat4,
+    model_set_optional: ?u32,
+    material_set_optional: ?u32,
+) void {
     cb.bindVertexBuffer(self.vertex_buffer, 0);
     cb.bindIndexBuffer(.Uint32, self.index_buffer, 0);
     for (self.root_nodes.items) |node_index| {
         var node = &self.nodes[node_index];
-        self.drawNode(cb, node, transform, model_set, material_set);
+        self.drawNode(cb, node, transform, model_set_optional, material_set_optional);
     }
 }
