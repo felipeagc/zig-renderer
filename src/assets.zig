@@ -9,7 +9,7 @@ const Sha1 = std.crypto.hash.Sha1;
 const AssetHash = [20]u8;
 
 pub const AssetVT = struct {
-    init: fn(self: *c_void, engine: *Engine, data: []const u8) anyerror!void,
+    init: fn(self: *c_void, engine: *Engine, data: []const u8, path: ?[*:0]const u8) anyerror!void,
     deinit: fn(self: *c_void) void,
 };
 
@@ -64,36 +64,33 @@ pub const AssetManager = struct {
         self.alloc.destroy(self);
     }
 
-    pub fn loadFile(self: *AssetManager, comptime T: type, path: []const u8) !*T {
+    pub fn loadFile(self: *AssetManager, comptime T: type, path: [*:0]const u8) !*T {
         var data = try self.loadFileDataAlloc(path);
         defer self.alloc.free(data);
 
-        var asset = try self.loadInternal(T, data);
+        var asset = try self.loadInternal(T, data, path);
 
         if (self.watcher) |watcher| {
-            var path_z = try self.alloc.dupeZ(u8, path);
-            defer self.alloc.free(path_z);
-
-            try watcher.addFile(path_z, asset);
+            try watcher.addFile(path, asset);
         }
 
         return @ptrCast(*T, @alignCast(@alignOf(T), asset.bytes.ptr));
     }
 
     pub fn load(self: *AssetManager, comptime T: type, data: []const u8) !*T {
-        var asset = try self.loadInternal(T, data);
+        var asset = try self.loadInternal(T, data, null);
         return @ptrCast(*T, @alignCast(@alignOf(T), asset.bytes.ptr));
     }
 
-    fn loadFileDataAlloc(self: *AssetManager, path: []const u8) ![]const u8 {
-        var file = try std.fs.cwd().openFile(path, .{});
+    fn loadFileDataAlloc(self: *AssetManager, path: [*:0]const u8) ![]const u8 {
+        var file = try std.fs.cwd().openFile(mem.span(path), .{});
         defer file.close();
 
         var stat = try file.stat();
 
         var data = try file.reader().readAllAlloc(self.alloc, stat.size);
 
-        if (std.mem.endsWith(u8, path, ".zst")) {
+        if (std.mem.endsWith(u8, mem.span(path), ".zst")) {
             std.log.info("decompressing: {}", .{path});
 
             var decompressed_data = try zstd.decompressAlloc(self.alloc, data);
@@ -105,7 +102,12 @@ pub const AssetManager = struct {
         return data;
     }
 
-    fn loadInternal(self: *AssetManager, comptime T: type, data: []const u8) !Asset {
+    fn loadInternal(
+        self: *AssetManager,
+        comptime T: type,
+        data: []const u8,
+        path: ?[*:0]const u8,
+    ) !Asset {
         var vt = &struct {
             const VT = AssetVT{
                 .deinit = T.deinit,
@@ -127,7 +129,7 @@ pub const AssetManager = struct {
         var asset_bytes: []align(@alignOf(T))u8 =
             try self.alloc.allocAdvanced(u8, @alignOf(T), @sizeOf(T), .at_least);
         var asset_obj: *T = @ptrCast(*T, asset_bytes.ptr);
-        try asset_obj.init(self.engine, new_data);
+        try asset_obj.init(self.engine, new_data, path);
 
         var asset = Asset{.vt = vt, .bytes = asset_bytes};
 
@@ -154,13 +156,15 @@ pub const AssetManager = struct {
                 var data = self.loadFileDataAlloc(mem.span(event.item.path)) catch continue;
                 defer self.alloc.free(data);
 
-                asset.vt.init(new_bytes.ptr, self.engine, data) catch {
+                asset.vt.init(new_bytes.ptr, self.engine, data, event.item.path) catch {
                     std.log.info("failed to reload asset: {}", .{event.item.path});
                     continue;
                 };
 
                 asset.vt.deinit(asset.bytes.ptr);
                 mem.copy(u8, asset.bytes, new_bytes);
+
+                std.log.info("reloaded asset: {}", .{event.item.path});
             }
         }
     }

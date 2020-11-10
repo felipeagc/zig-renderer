@@ -19,9 +19,70 @@ radiance_sampler: *rg.Sampler,
 irradiance_sampler: *rg.Sampler,
 camera: Camera,
 cube_mesh: Mesh,
+sphere_mesh: Mesh,
 
 last_time: f64 = 0.0,
 delta_time: f64 = 0.0,
+
+const world_inner_radius = 10.0;
+const world_outer_radius = 10.25;
+
+const Atmosphere = extern struct {
+    const Kr = 0.0025; // Rayleigh scattering constant
+    const ESun = 20.0; // Sun brightness constant
+    const Km = 20.0; // Mie scattering constant
+    const rayleigh_scale_depth = 0.25;
+    const mie_scale_depth = 0.1;
+
+    sun_pos: Vec4,
+
+    inv_wave_length4: Vec4 = Vec4.init(
+        1.0 / std.math.pow(f32, 0.650, 4),
+        1.0 / std.math.pow(f32, 0.570, 4),
+        1.0 / std.math.pow(f32, 0.475, 4),
+        1.0,
+    ),
+
+    camera_height: f32,
+    camera_height_sq: f32,
+    outer_radius: f32,
+    outer_radius_sq: f32,
+    inner_radius: f32,
+    inner_radius_sq: f32,
+    KrESun: f32 = Kr * ESun,
+    KmESun: f32 = Km * ESun,
+    Kr4PI: f32 = Kr * 4.0 * std.math.pi,
+    Km4PI: f32 = Km * 4.0 * std.math.pi,
+    scale: f32,
+    scale_over_depth: f32,
+    g: f32 = -0.99, // The Mie phase asymmetry factor
+    g_sq: f32 = -0.99 * -0.99,
+
+    pub fn init(params: struct {
+        camera_pos: Vec3,
+        sun_pos: Vec3,
+        inner_radius: f32,
+        outer_radius: f32,
+    }) @This() {
+        return @This() {
+            .sun_pos = Vec4.init(
+                params.sun_pos.x,
+                params.sun_pos.y,
+                params.sun_pos.z,
+                1.0
+            ),
+            .camera_height = params.camera_pos.norm(),
+            .camera_height_sq = params.camera_pos.norm() * params.camera_pos.norm(),
+            .inner_radius = params.inner_radius,
+            .inner_radius_sq = params.inner_radius * params.inner_radius,
+            .outer_radius = params.outer_radius,
+            .outer_radius_sq = params.outer_radius * params.outer_radius,
+            .scale = 1.0 / (params.outer_radius - params.inner_radius),
+            .scale_over_depth = (1.0 / (params.outer_radius - params.inner_radius))
+                / rayleigh_scale_depth,
+        };
+    }
+};
 
 const Camera = struct {
     uniform: extern struct {
@@ -206,6 +267,8 @@ pub fn init(allocator: *Allocator) !*App {
         .graph = graph,
         .camera = .{},
         .cube_mesh = try Mesh.initCube(engine.device, engine.main_cmd_pool),
+        .sphere_mesh = try Mesh.initSphere(
+            engine.device, engine.alloc, engine.main_cmd_pool, world_outer_radius),
         .model_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/model.hlsl"),
         .skybox_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/skybox.hlsl"),
         .model = try asset_manager.loadFile(GltfAsset, "assets/DamagedHelmet.glb"),
@@ -226,6 +289,7 @@ pub fn deinit(self: *App) void {
     self.engine.device.destroySampler(self.radiance_sampler);
     self.engine.device.destroySampler(self.irradiance_sampler);
     self.cube_mesh.deinit();
+    self.sphere_mesh.deinit();
     self.graph.destroy();
     self.asset_manager.deinit();
     self.engine.deinit();
@@ -237,13 +301,23 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 
     self.camera.update(self.engine, @floatCast(f32, self.delta_time));
 
+    var atmosphere = Atmosphere.init(.{
+        .camera_pos = self.camera.pos,
+        .sun_pos = Vec3.init(0.7, 0.7, 0.7),
+        .inner_radius = world_inner_radius,
+        .outer_radius = world_outer_radius,
+    });
+
     cb.bindPipeline(self.skybox_pipeline.pipeline);
     cb.setUniform(0, 0,
         @sizeOf(@TypeOf(self.camera.uniform)),
-        @ptrCast(*c_void, &self.camera.uniform));
+        &self.camera.uniform);
+    cb.setUniform(1, 0,
+        @sizeOf(@TypeOf(atmosphere)),
+         &atmosphere);
     cb.bindSampler(0, 1, self.radiance_sampler);
     cb.bindImage(1, 1, self.radiance_image);
-    self.cube_mesh.draw(cb);
+    self.sphere_mesh.draw(cb);
 
     cb.bindPipeline(self.model_pipeline.pipeline);
     cb.setUniform(0, 0,

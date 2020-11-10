@@ -31,9 +31,9 @@ pub const IBLBaker = struct {
         var radiance_pipeline: GraphicsPipelineAsset = undefined;
         var brdf_pipeline: GraphicsPipelineAsset = undefined;
 
-        try irradiance_pipeline.init(engine, @embedFile("../shaders/irradiance.hlsl"));
-        try radiance_pipeline.init(engine, @embedFile("../shaders/radiance.hlsl"));
-        try brdf_pipeline.init(engine, @embedFile("../shaders/brdf.hlsl"));
+        try irradiance_pipeline.init(engine, @embedFile("../shaders/irradiance.hlsl"), null);
+        try radiance_pipeline.init(engine, @embedFile("../shaders/radiance.hlsl"), null);
+        try brdf_pipeline.init(engine, @embedFile("../shaders/brdf.hlsl"), null);
 
         return IBLBaker{
             .engine = engine,

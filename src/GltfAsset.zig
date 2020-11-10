@@ -104,7 +104,12 @@ const Node = struct {
     }
 };
 
-pub fn init(self_opaque: *c_void, engine: *Engine, data: []const u8) anyerror!void {
+pub fn init(
+    self_opaque: *c_void,
+    engine: *Engine,
+    data: []const u8,
+    path: ?[*:0]const u8,
+) anyerror!void {
     var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
     const allocator = engine.alloc;
 

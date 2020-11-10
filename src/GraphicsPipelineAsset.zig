@@ -10,15 +10,20 @@ pub const GraphicsPipelineAsset = Self;
 engine: *Engine,
 pipeline: *rg.Pipeline = null,
 
-pub fn init(self_opaque: *c_void, engine: *Engine, data: []const u8) anyerror!void {
+pub fn init(
+    self_opaque: *c_void,
+    engine: *Engine,
+    data: []const u8,
+    path: ?[*:0]const u8,
+) anyerror!void {
     var self = @ptrCast(*Self, @alignCast(@alignOf(@This()), self_opaque));
 
     const allocator = engine.alloc;
 
-    var vert_spirv = try compileShaderAlloc(allocator, "vertex", .Vertex, data);
+    var vert_spirv = try compileShaderAlloc(allocator, "vertex", .Vertex, data, path);
     defer allocator.free(vert_spirv);
     
-    var frag_spirv = try compileShaderAlloc(allocator, "pixel", .Fragment, data);
+    var frag_spirv = try compileShaderAlloc(allocator, "pixel", .Fragment, data, path);
     defer allocator.free(frag_spirv);
 
     var options = try parseGraphicsPipelineOptions(data);
@@ -54,12 +59,14 @@ fn compileShaderAlloc(
     alloc: *Allocator,
     entry_point: [*:0]const u8,
     stage: ts.ShaderStage,
-    code: []const u8) ![]const u8 {
+    code: []const u8,
+    path: ?[*:0]const u8,
+) ![]const u8 {
     var compiler = ts.compilerCreate();
     defer ts.compilerDestroy(compiler);
 
     var input = ts.CompilerInput{
-        .path = null,
+        .path = path,
         .input = &code[0],
         .input_size = code.len,
         .entry_point = entry_point,
