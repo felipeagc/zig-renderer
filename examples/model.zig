@@ -178,18 +178,12 @@ const Camera = struct {
 fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
     if (user_data == null) return;
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-    self.graph.resize(@intCast(u32, width), @intCast(u32, height));
-
-    std.log.info("window resized", .{});
 }
 
 fn onKeyPress(user_data: ?*c_void, key: Key, action: Action, mods: u32) void {
     if (user_data == null) return;
     var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
 
-    if (key == .Escape and action == .Press) {
-        self.engine.setCursorEnabled(!self.engine.getCursorEnabled());
-    }
 }
 
 pub fn init(allocator: *Allocator) !*App {
@@ -198,9 +192,6 @@ pub fn init(allocator: *Allocator) !*App {
 
     var engine = try Engine.init(allocator);
     // errdefer engine.deinit();
-    engine.user_data = @ptrCast(*c_void, self);
-    engine.on_resize = onResize;
-    engine.on_key_press = onKeyPress;
     engine.setCursorEnabled(false);
 
     var asset_manager = try AssetManager.init(engine, .{.watch = true});
@@ -354,6 +345,25 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
+
+        while (self.engine.nextEvent()) |event| {
+            switch (event) {
+                .FramebufferResized => |resized| {
+                    self.graph.resize(
+                        @intCast(u32, resized.width),
+                        @intCast(u32, resized.height)
+                    );
+                    std.log.info("window resized", .{});
+                },
+                .KeyPressed => |keyboard| {
+                    if (keyboard.key == .Escape) {
+                        self.engine.setCursorEnabled(!self.engine.getCursorEnabled());
+                    }
+                },
+                else => {}
+            }
+        }
+
         self.asset_manager.refreshAssets();
         self.graph.execute();
 

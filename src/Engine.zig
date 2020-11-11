@@ -23,37 +23,7 @@ white_image: *rg.Image,
 black_image: *rg.Image,
 default_sampler: *rg.Sampler,
 main_cmd_pool: *rg.CmdPool,
-user_data: ?*c_void = null,
-on_resize: ?fn(?*c_void, i32, i32) void = null,
-on_key_press: ?fn(?*c_void, Key, Action, u32) void = null,
-
-fn onResizeGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
-    var self: *Engine = @ptrCast(*Engine, 
-        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
-
-    if (self.on_resize) |on_resize| {
-        on_resize(self.user_data, @as(i32, width), @as(i32, height));
-    }
-}
-
-fn onKeyPressGLFW(
-    window: ?*c.GLFWwindow,
-    key: c_int,
-    scancode: c_int,
-    action: c_int,
-    mods: c_int,
-) callconv(.C) void {
-    var self: *Engine = @ptrCast(*Engine, 
-        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
-
-    if (self.on_key_press) |on_key_press| {
-        on_key_press(
-            self.user_data,
-            @intToEnum(Key, key),
-            @intToEnum(Action, action),
-            @intCast(u32, mods));
-    }
-}
+event_queue: EventQueue = .{},
 
 pub fn getWindowInfo(self: *Engine) !rg.PlatformWindowInfo {
     var window_info: rg.PlatformWindowInfo = .{.x11 = .{}, .win32 = .{}, .wl = .{}};
@@ -83,8 +53,20 @@ pub fn init(alloc: *Allocator) !*Engine {
     var window = c.glfwCreateWindow(800, 600, "Renderer", null, null)
         orelse return error.InitFail;
     c.glfwSetWindowUserPointer(window, @ptrCast(*c_void, self));
-    _ = c.glfwSetWindowSizeCallback(window, onResizeGLFW);
-    _ = c.glfwSetKeyCallback(window, onKeyPressGLFW);
+    _ = c.glfwSetWindowSizeCallback(window, windowSizeCallbackGLFW);
+    _ = c.glfwSetWindowCloseCallback(window, windowCloseCallbackGLFW);
+    _ = c.glfwSetWindowRefreshCallback(window, windowRefreshCallbackGLFW);
+    _ = c.glfwSetWindowFocusCallback(window, windowFocusCallbackGLFW);
+    _ = c.glfwSetWindowIconifyCallback(window, windowIconifyCallbackGLFW);
+    _ = c.glfwSetFramebufferSizeCallback(window, framebufferSizeCallbackGLFW);
+    _ = c.glfwSetMouseButtonCallback(window, mouseButtonCallbackGLFW);
+    _ = c.glfwSetCursorPosCallback(window, cursorPosCallbackGLFW);
+    _ = c.glfwSetCursorEnterCallback(window, cursorEnterCallbackGLFW);
+    _ = c.glfwSetScrollCallback(window, scrollCallbackGLFW);
+    _ = c.glfwSetKeyCallback(window, keyCallbackGLFW);
+    _ = c.glfwSetCharCallback(window, charCallbackGLFW);
+    _ = c.glfwSetWindowMaximizeCallback(window, windowMaximizeCallbackGLFW);
+    _ = c.glfwSetWindowContentScaleCallback(window, windowContentScaleCallbackGLFW);
 
     var device_info = rg.DeviceInfo{
         .enable_validation = true,
@@ -181,6 +163,17 @@ pub fn pollEvents(self: *Engine) void {
     c.glfwPollEvents();
 }
 
+pub fn nextEvent(self: *Engine) ?Event {
+    var event: Event = Event.None;
+
+    if (self.event_queue.head != self.event_queue.tail) {
+        event = self.event_queue.events[self.event_queue.tail];
+        self.event_queue.tail = (self.event_queue.tail + 1) % EventQueue.capacity;
+    }
+
+    return if (event != .None) event else null;
+}
+
 pub fn getTime(self: *Engine) f64 {
     return c.glfwGetTime();
 }
@@ -231,6 +224,17 @@ pub const Mod = struct {
     pub const Super = 0x0008;
     pub const CapsLock = 0x0010;
     pub const NumLock = 0x0020;
+};
+
+pub const Button = enum(i32) {
+    Left = 0,
+    Right = 1,
+    Middle = 2,
+    Button4 = 3,
+    Button5 = 4,
+    Button6 = 5,
+    Button7 = 6,
+    Button8 = 7,
 };
 
 pub const Key = enum(i32) {
@@ -356,3 +360,346 @@ pub const Key = enum(i32) {
     RightSuper   = 347,
     Menu         = 348,
 };
+
+const EventQueue = struct {
+    const capacity = 1024;
+
+    events: [capacity]Event = undefined,
+    head: usize = 0,
+    tail: usize = 0,
+};
+
+pub const EventType = enum {
+    None,
+    WindowMoved,
+    WindowResized,
+    WindowClosed,
+    WindowRefresh,
+    WindowFocused,
+    WindowDefocused,
+    WindowIconified,
+    WindowUniconified,
+    FramebufferResized,
+    ButtonPressed,
+    ButtonReleased,
+    CursorMoved,
+    CursorEntered,
+    CursorLeft,
+    Scrolled,
+    KeyPressed,
+    KeyRepeated,
+    KeyReleased,
+    CodepointInput,
+    // MonitorConnected,
+    // MonitorDisconnected,
+
+    // FileDropped,
+
+    // JoystickConnected,
+    // JoystickDisconnected,
+
+    WindowMaximized,
+    WindowUnmaximized,
+    WindowScaleChanged,
+};
+
+pub const Event = union(EventType) {
+    None: void,
+    WindowMoved: struct {
+        window: ?*c.GLFWwindow,
+        x: i32,
+        y: i32,
+    },
+    WindowResized: struct {
+        window: ?*c.GLFWwindow,
+        width: i32,
+        height: i32,
+    },
+    WindowClosed: struct {window: ?*c.GLFWwindow},
+    WindowRefresh: struct {window: ?*c.GLFWwindow},
+    WindowFocused: struct {window: ?*c.GLFWwindow},
+    WindowDefocused: struct {window: ?*c.GLFWwindow},
+    WindowIconified: struct {window: ?*c.GLFWwindow},
+    WindowUniconified: struct {window: ?*c.GLFWwindow},
+    FramebufferResized: struct {
+        window: ?*c.GLFWwindow,
+        width: i32,
+        height: i32,
+    },
+    ButtonPressed: struct {
+        window: ?*c.GLFWwindow,
+        button: Button,
+        mods: u32,
+    },
+    ButtonReleased: struct {
+        window: ?*c.GLFWwindow,
+        button: Button,
+        mods: u32,
+    },
+    CursorMoved: struct {
+        window: ?*c.GLFWwindow,
+        x: i32,
+        y: i32,
+    },
+    CursorEntered: struct {window: ?*c.GLFWwindow},
+    CursorLeft: struct {window: ?*c.GLFWwindow},
+    Scrolled: struct {
+        window: ?*c.GLFWwindow,
+        x: f64,
+        y: f64,
+    },
+    KeyPressed: struct {
+        window: ?*c.GLFWwindow,
+        key: Key,
+        scancode: i32,
+        mods: u32,
+    },
+    KeyReleased: struct {
+        window: ?*c.GLFWwindow,
+        key: Key,
+        scancode: i32,
+        mods: u32,
+    },
+    KeyRepeated: struct {
+        window: ?*c.GLFWwindow,
+        key: Key,
+        scancode: i32,
+        mods: u32,
+    },
+    CodepointInput: struct {
+        window: ?*c.GLFWwindow,
+        codepoint: u32,
+    },
+    WindowMaximized: struct {window: ?*c.GLFWwindow},
+    WindowUnmaximized: struct {window: ?*c.GLFWwindow},
+    WindowScaleChanged: struct {
+        window: ?*c.GLFWwindow,
+        x: f32,
+        y: f32,
+    },
+};
+
+fn newEvent(engine: *Engine) *Event {
+    var event: *Event = &engine.event_queue.events[engine.event_queue.head];
+    engine.event_queue.head = (engine.event_queue.head + 1) % EventQueue.capacity;
+    assert(engine.event_queue.head != engine.event_queue.tail);
+    event.* = Event.None;
+    return event;
+}
+
+fn windowPosCallbackGLFW(window: ?*c.GLFWwindow, x: c_int, y: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .WindowMoved = .{
+            .window = window,
+            .x = x,
+            .y = y,
+        }
+    };
+}
+
+fn windowSizeCallbackGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .WindowResized = .{
+            .window = window,
+            .width = width,
+            .height = height,
+        }
+    };
+}
+
+fn windowCloseCallbackGLFW(window: ?*c.GLFWwindow) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .WindowClosed = .{.window = window,}
+    };
+}
+
+fn windowRefreshCallbackGLFW(window: ?*c.GLFWwindow) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .WindowRefresh = .{.window = window,}
+    };
+}
+
+fn windowFocusCallbackGLFW(window: ?*c.GLFWwindow, focused: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = if (focused != 0) Event{.WindowFocused = .{.window = window}}
+              else Event{.WindowDefocused = .{.window = window}};
+}
+
+fn windowIconifyCallbackGLFW(window: ?*c.GLFWwindow, iconified: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = if (iconified != 0) Event{.WindowIconified = .{.window = window}}
+              else Event{.WindowUniconified = .{.window = window}};
+}
+
+fn framebufferSizeCallbackGLFW(window: ?*c.GLFWwindow, width: c_int, height: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .FramebufferResized = .{
+            .window = window,
+            .width = width,
+            .height = height,
+        }
+    };
+}
+
+fn mouseButtonCallbackGLFW(window: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    if (action == c.GLFW_PRESS) {
+        var event = self.newEvent();
+        event.* = Event{
+            .ButtonPressed = .{
+                .window = window,
+                .button = @intToEnum(Button, button),
+                .mods = @intCast(u32, mods),
+            }
+        };
+    } else if (action == c.GLFW_RELEASE) {
+        var event = self.newEvent();
+        event.* = Event{
+            .ButtonReleased = .{
+                .window = window,
+                .button = @intToEnum(Button, button),
+                .mods = @intCast(u32, mods),
+            }
+        };
+    }
+}
+
+fn cursorPosCallbackGLFW(window: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .CursorMoved = .{
+            .window = window,
+            .x = @floatToInt(i32, x),
+            .y = @floatToInt(i32, y),
+        }
+    };
+}
+
+fn cursorEnterCallbackGLFW(window: ?*c.GLFWwindow, entered: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    if (entered != 0) {
+        var event = self.newEvent();
+        event.* = Event{.CursorEntered = .{.window = window}};
+    } else {
+        var event = self.newEvent();
+        event.* = Event{.CursorLeft = .{.window = window}};
+    }
+}
+
+fn scrollCallbackGLFW(window: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{.Scrolled = .{.window = window, .x = x, .y = y}};
+}
+
+fn keyCallbackGLFW(
+    window: ?*c.GLFWwindow,
+    key: c_int,
+    scancode: c_int,
+    action: c_int,
+    mods: c_int,
+) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+
+    if (action == c.GLFW_PRESS) {
+        event.* = Event{
+            .KeyPressed = .{
+                .window = window,
+                .key = @intToEnum(Key, key),
+                .scancode = scancode,
+                .mods = @intCast(u32, mods),
+            },
+        };
+    } else if (action == c.GLFW_RELEASE) {
+        event.* = Event{
+            .KeyPressed = .{
+                .window = window,
+                .key = @intToEnum(Key, key),
+                .scancode = scancode,
+                .mods = @intCast(u32, mods),
+            },
+        };
+    } else if (action == c.GLFW_REPEAT) {
+        event.* = Event{
+            .KeyPressed = .{
+                .window = window,
+                .key = @intToEnum(Key, key),
+                .scancode = scancode,
+                .mods = @intCast(u32, mods),
+            },
+        };
+    }
+}
+
+fn charCallbackGLFW(window: ?*c.GLFWwindow, codepoint: u32) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .CodepointInput = .{.window = window, .codepoint = codepoint},
+    };
+}
+
+fn windowMaximizeCallbackGLFW(window: ?*c.GLFWwindow, maximized: c_int) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = if (maximized != 0) 
+        Event{.WindowMaximized = .{.window = window}}
+    else 
+        Event{.WindowUnmaximized = .{.window = window}};
+}
+
+fn windowContentScaleCallbackGLFW(window: ?*c.GLFWwindow, x: f32, y: f32) callconv(.C) void {
+    var self: *Engine = @ptrCast(*Engine, 
+        @alignCast(@alignOf(Engine), c.glfwGetWindowUserPointer(window)));
+
+    var event = self.newEvent();
+    event.* = Event{
+        .WindowScaleChanged = .{
+            .window = window,
+            .x = x,
+            .y = y,
+        }
+    };
+}

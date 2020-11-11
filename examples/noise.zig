@@ -11,22 +11,12 @@ graph: *rg.Graph,
 noise_image_res: rg.ResourceRef,
 sampler: *rg.Sampler,
 
-fn onResize(user_data: ?*c_void, width: i32, height: i32) void {
-    if (user_data == null) return;
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-    self.graph.resize(@intCast(u32, width), @intCast(u32, height));
-
-    std.log.info("window resized", .{});
-}
-
 pub fn init(allocator: *Allocator) !*App {
     var self = try allocator.create(App);
     errdefer allocator.destroy(self);
 
     var engine = try Engine.init(allocator);
     errdefer engine.deinit();
-    engine.user_data = @ptrCast(*c_void, self);
-    engine.on_resize = onResize;
 
     var asset_manager = try AssetManager.init(engine, .{.watch = true});
     errdefer asset_manager.deinit();
@@ -135,6 +125,20 @@ fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) vo
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
+
+        while (self.engine.nextEvent()) |event| {
+            switch (event) {
+                .FramebufferResized => |resized| {
+                    self.graph.resize(
+                        @intCast(u32, resized.width),
+                        @intCast(u32, resized.height)
+                    );
+                    std.log.info("window resized", .{});
+                },
+                else => {}
+            }
+        }
+
         self.asset_manager.refreshAssets();
         self.graph.execute();
     }
