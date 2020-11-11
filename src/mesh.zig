@@ -85,7 +85,7 @@ pub const Mesh = struct {
         var s: f32 = (std.math.pi * 2.0) / detail;
 
         var h: f32 = 0.0;
-        while (h < std.math.pi * 2.0) : (h += s) {
+        while (h < (std.math.pi * 2.0 - s)) : (h += s) {
             var v: f32 = -std.math.pi / 2.0;
             while (v < std.math.pi / 2.0) : (v += s) {
                 var v1 = Vertex{
