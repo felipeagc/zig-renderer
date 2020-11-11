@@ -25,7 +25,8 @@ inner_atm_mesh: Mesh,
 last_time: f64 = 0.0,
 delta_time: f64 = 0.0,
 
-sun_angle: f64 = std.math.pi*0.8,
+sun_angle: f32 = std.math.pi*0.8,
+animate: bool = true,
 
 const world_inner_radius = 50.0;
 const world_outer_radius = (10.25/10.0) * world_inner_radius;
@@ -304,15 +305,17 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 
     self.camera.update(self.engine, @floatCast(f32, self.delta_time));
 
-    self.sun_angle += self.delta_time * 0.1;
-    self.sun_angle = @mod(self.sun_angle, std.math.pi * 2.0);
+    if (self.animate) {
+        self.sun_angle += @floatCast(f32, self.delta_time) * 0.1;
+        self.sun_angle = @mod(self.sun_angle, std.math.pi * 2.0);
+    }
 
     var atmosphere = Atmosphere.init(.{
         .camera_pos = self.camera.pos,
         .sun_pos = Vec3.init(
             0.0,
-            @floatCast(f32, sin(self.sun_angle)),
-            @floatCast(f32, cos(self.sun_angle)),
+            sin(self.sun_angle),
+            cos(self.sun_angle),
         ).normalize(),
         .inner_radius = world_inner_radius,
         .outer_radius = world_outer_radius,
@@ -340,6 +343,10 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
 
     self.inner_atm_mesh.draw(cb, &Mat4.identity, 2, 3);
     self.model.draw(cb, &Mat4.scaling(Vec3.single(5.0)), 2, 3);
+
+    if (self.engine.imgui_impl) |*imgui_impl| {
+        imgui_impl.render(cb);
+    }
 }
 
 pub fn run(self: *App) !void {
@@ -365,6 +372,17 @@ pub fn run(self: *App) !void {
         }
 
         self.asset_manager.refreshAssets();
+
+        if (self.engine.imgui_impl) |*imgui_impl| {
+            imgui_impl.begin(self.delta_time);
+
+            if (inspector.beginWindow("My window")) {
+                inspector.inspect("Animate", &self.animate);
+                inspector.inspect("Sun angle", &self.sun_angle);
+            }
+            inspector.endWindow();
+        }
+
         self.graph.execute();
 
         if (self.last_time > 0) {

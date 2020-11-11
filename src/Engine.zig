@@ -1,5 +1,6 @@
 usingnamespace @import("./common.zig");
 const options = @import("./options.zig");
+const ImguiImpl = @import("./imgui_impl.zig").ImguiImpl;
 
 const c = @cImport({
     @cDefine("_NO_CRT_STDIO_INLINE", "1");
@@ -23,6 +24,7 @@ white_image: *rg.Image,
 black_image: *rg.Image,
 default_sampler: *rg.Sampler,
 main_cmd_pool: *rg.CmdPool,
+imgui_impl: ?ImguiImpl,
 event_queue: EventQueue = .{},
 
 pub fn getWindowInfo(self: *Engine) !rg.PlatformWindowInfo {
@@ -138,20 +140,28 @@ pub fn init(alloc: *Allocator) !*Engine {
         .black_image = black_image,
         .default_sampler = default_sampler,
         .main_cmd_pool = main_cmd_pool,
+        .imgui_impl = null,
     };
+
+    self.imgui_impl = try ImguiImpl.init(self);
 
     return self;
 }
 
 pub fn deinit(self: *Engine) void {
-    c.glfwDestroyWindow(self.window);
-    c.glfwTerminate();
+    if (self.imgui_impl) |*imgui_impl| {
+        imgui_impl.deinit();
+    }
 
     self.device.destroyImage(self.white_image);
     self.device.destroyImage(self.black_image);
     self.device.destroySampler(self.default_sampler);
     self.device.destroyCmdPool(self.main_cmd_pool);
     self.device.destroy();
+
+    c.glfwDestroyWindow(self.window);
+    c.glfwTerminate();
+
     self.alloc.destroy(self);
 }
 
@@ -171,7 +181,15 @@ pub fn nextEvent(self: *Engine) ?Event {
         self.event_queue.tail = (self.event_queue.tail + 1) % EventQueue.capacity;
     }
 
-    return if (event != .None) event else null;
+
+    if (event != .None) {
+        if (self.imgui_impl) |*imgui_impl| {
+            imgui_impl.handleEvent(&event);
+        }
+        return event; 
+    } else {
+        return null;
+    }
 }
 
 pub fn getTime(self: *Engine) f64 {
@@ -202,8 +220,21 @@ pub fn getCursorPos(self: *Engine) struct{x: f64, y: f64} {
     return .{.x = xpos, .y = ypos};
 }
 
+pub fn setCursorPos(self: *Engine, x: i32, y: i32) void {
+    c.glfwSetCursorPos(self.window, @intToFloat(f64, x), @intToFloat(f64, y));
+}
+
 pub fn getKeyState(self: *Engine, key: Key) bool {
     var state = c.glfwGetKey(self.window, @enumToInt(key));
+    switch (state) {
+        c.GLFW_PRESS => return true,
+        c.GLFW_REPEAT => return true,
+        else => return false,
+    }
+}
+
+pub fn getButtonState(self: *Engine, button: Button) bool {
+    var state = c.glfwGetMouseButton(self.window, @enumToInt(button));
     switch (state) {
         c.GLFW_PRESS => return true,
         c.GLFW_REPEAT => return true,
@@ -650,7 +681,7 @@ fn keyCallbackGLFW(
         };
     } else if (action == c.GLFW_RELEASE) {
         event.* = Event{
-            .KeyPressed = .{
+            .KeyReleased = .{
                 .window = window,
                 .key = @intToEnum(Key, key),
                 .scancode = scancode,
@@ -659,7 +690,7 @@ fn keyCallbackGLFW(
         };
     } else if (action == c.GLFW_REPEAT) {
         event.* = Event{
-            .KeyPressed = .{
+            .KeyRepeated = .{
                 .window = window,
                 .key = @intToEnum(Key, key),
                 .scancode = scancode,

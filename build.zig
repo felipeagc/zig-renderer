@@ -96,6 +96,11 @@ pub fn build(b: *Builder) !void {
         "thirdparty/tinyshader/tinyshader/tinyshader_unity.c", &[_][]u8{});
     renderer_lib.addCSourceFile("thirdparty/cgltf/cgltf.c", &[_][]u8{});
     renderer_lib.addCSourceFile("thirdparty/zstd/zstddeclib.c", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/imgui/imgui.cpp", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/imgui/imgui_draw.cpp", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/imgui/imgui_widgets.cpp", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/imgui/imgui_demo.cpp", &[_][]u8{});
+    renderer_lib.addCSourceFile("thirdparty/imgui/cimgui.cpp", &[_][]u8{});
 
     const renderer_test = b.addTest("src/tests.zig");
 
