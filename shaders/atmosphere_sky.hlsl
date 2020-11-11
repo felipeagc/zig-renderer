@@ -1,4 +1,4 @@
-#pragma blend false
+#pragma blend true
 #pragma depth_test true
 #pragma depth_write true
 #pragma depth_bias false
@@ -27,8 +27,7 @@ void vertex(
     out float4 out_pos : SV_Position,
     out float3 out_uvw : TEXCOORD0,
     out float3 out_c0 : COLOR0,
-    out float3 out_c1 : COLOR1,
-    out float3 out_debug : DEBUG
+    out float3 out_c1 : COLOR1
 ) {
 	float3 ray = pos - camera.pos.xyz;
 	float far = length(ray);
@@ -54,7 +53,6 @@ void vertex(
     else
     {
         // From atmosphere
-
         start = camera.pos.xyz;
         height = length(start);
         depth = exp(atm.scale_over_scale_depth * (atm.inner_radius - atm.camera_height));
@@ -74,20 +72,14 @@ void vertex(
         depth = exp(atm.scale_over_scale_depth * (atm.inner_radius - height));
 		float light_angle = dot(atm.sun_pos.xyz, sample_point) / height;
 		float camera_angle = dot(ray, sample_point) / height;
-		float scatter = (start_offset + depth*(scale(light_angle) - scale(camera_angle)));
+		float scatter = (start_offset + depth*(max(scale(light_angle) - scale(camera_angle), 0.0)));
 		float3 attenuate = exp(-scatter * (atm.inv_wave_length.xyz * atm.Kr4PI + atm.Km4PI));
         front_color += attenuate * (depth * scaled_length);
 		sample_point += sample_ray;
     }
 
-    // float4x4 view = camera.view;
-    // view[0][3] = 0.0;
-    // view[1][3] = 0.0;
-    // view[2][3] = 0.0;
-
     out_pos = mul(mul(camera.proj, camera.view), float4(pos, 1));
 	out_uvw = camera.pos.xyz - pos;
-    out_debug = front_color;
 	out_c0 = front_color * (atm.inv_wave_length.xyz * atm.KrESun);
 	out_c1 = front_color * atm.KmESun;
 }
@@ -97,16 +89,8 @@ void pixel(
 	in float3 uvw : TEXCOORD0,
     in float3 c0 : COLOR0,
     in float3 c1 : COLOR1,
-	in float3 debug : DEBUG,
 	out float4 out_color : SV_Target
 ) {
-    // float3 eyedir = normalize(-uvw);
-    // float alpha = dot(eyedir, normalize(atm.sun_dir.xyz));
-
-
-    // out_color = float4(debug, debug, debug, 1.0);
-    // out_color = cube_texture.SampleLevel(cube_sampler, uvw, 1.0);
-    // out_color = float4(debug, 1.0);
 	float fCos = dot(atm.sun_pos.xyz, uvw) / length(uvw);
 	float fCos2 = fCos*fCos;
 	float3 color = getRayleighPhase(fCos2) * c0 + getMiePhase(fCos, fCos2, atm.g, atm.g_sq) * c1;

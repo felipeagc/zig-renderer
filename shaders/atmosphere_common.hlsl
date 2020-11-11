@@ -1,5 +1,5 @@
 // The number of sample points taken along the ray
-#define NUM_SAMPLES 3
+#define NUM_SAMPLES 5
 
 // The scale depth (the altitude at which the average atmospheric density is found)
 #define SCALE_DEPTH 0.25
