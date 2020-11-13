@@ -27,25 +27,23 @@ delta_time: f64 = 0.0,
 
 sun_angle: f32 = std.math.pi*0.8,
 animate: bool = true,
+wavelengths: Vec3 = Vec3.init(0.650, 0.570, 0.475),
+mie_g: f32 = -0.99,
 
-const world_inner_radius = 50.0;
+Kr: f32 = 0.0025, // Rayleigh scattering constant
+Km: f32 = 0.001, // Mie scattering constant
+ESun: f32 = 20.0, // Sun brightness constant
+
+const world_inner_radius = 300.0;
 const world_outer_radius = (10.25/10.0) * world_inner_radius;
 
 const Atmosphere = extern struct {
-    const Kr = 0.0025; // Rayleigh scattering constant
-    const Km = 0.001; // Mie scattering constant
-    const ESun = 20.0; // Sun brightness constant
     const rayleigh_scale_depth = 0.25;
     const mie_scale_depth = 0.1;
 
     sun_pos: Vec4,
 
-    inv_wave_length4: Vec4 = Vec4.init(
-        1.0 / std.math.pow(f32, 0.650, 4),
-        1.0 / std.math.pow(f32, 0.570, 4),
-        1.0 / std.math.pow(f32, 0.475, 4),
-        1.0,
-    ),
+    inv_wave_length4: Vec4,
 
     camera_height: f32,
     camera_height_sq: f32,
@@ -53,20 +51,25 @@ const Atmosphere = extern struct {
     outer_radius_sq: f32,
     inner_radius: f32,
     inner_radius_sq: f32,
-    KrESun: f32 = Kr * ESun,
-    KmESun: f32 = Km * ESun,
-    Kr4PI: f32 = Kr * 4.0 * std.math.pi,
-    Km4PI: f32 = Km * 4.0 * std.math.pi,
+    KrESun: f32 ,
+    KmESun: f32,
+    Kr4PI: f32,
+    Km4PI: f32,
     scale: f32,
     scale_over_scale_depth: f32,
-    g: f32 = -0.99, // The Mie phase asymmetry factor
-    g_sq: f32 = -0.99 * -0.99,
+    g: f32, // The Mie phase asymmetry factor
+    g_sq: f32,
 
     pub fn init(params: struct {
         camera_pos: Vec3,
         sun_pos: Vec3,
+        wavelengths: Vec3,
         inner_radius: f32,
         outer_radius: f32,
+        mie_g: f32,
+        Kr: f32,
+        Km: f32,
+        ESun: f32,
     }) @This() {
         return @This() {
             .sun_pos = Vec4.init(
@@ -84,6 +87,18 @@ const Atmosphere = extern struct {
             .scale = 1.0 / (params.outer_radius - params.inner_radius),
             .scale_over_scale_depth = (1.0 / (params.outer_radius - params.inner_radius))
                 / rayleigh_scale_depth,
+            .KrESun = params.Kr * params.ESun,
+            .KmESun = params.Km * params.ESun,
+            .Kr4PI = params.Kr * 4 * std.math.pi,
+            .Km4PI = params.Km * 4 * std.math.pi,
+            .inv_wave_length4 = Vec4.init(
+                1.0 / std.math.pow(f32, params.wavelengths.x, 4),
+                1.0 / std.math.pow(f32, params.wavelengths.y, 4),
+                1.0 / std.math.pow(f32, params.wavelengths.z, 4),
+                1.0,
+            ),
+            .g = params.mie_g,
+            .g_sq = params.mie_g * params.mie_g,
         };
     }
 };
@@ -262,8 +277,14 @@ pub fn init(allocator: *Allocator) !*App {
         .graph = graph,
         .camera = .{},
         .cube_mesh = try Mesh.initCube(engine, engine.main_cmd_pool),
-        .outer_atm_mesh = try Mesh.initSphere(engine, engine.main_cmd_pool, world_outer_radius, 360.0),
-        .inner_atm_mesh = try Mesh.initSphere(engine, engine.main_cmd_pool, world_inner_radius, 360.0),
+        .outer_atm_mesh = try Mesh.initCubeSphere(
+            engine, engine.main_cmd_pool, world_outer_radius, 100),
+        .inner_atm_mesh = try Mesh.initCubeSphere(
+            engine,
+            engine.main_cmd_pool,
+            world_inner_radius,
+            100
+        ),
         .model_pipeline = try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/model.hlsl"),
         .atmosphere_sky_pipeline =
             try asset_manager.loadFile(GraphicsPipelineAsset, "shaders/atmosphere_sky.hlsl"),
@@ -319,6 +340,11 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
         ).normalize(),
         .inner_radius = world_inner_radius,
         .outer_radius = world_outer_radius,
+        .wavelengths = self.wavelengths,
+        .Kr = self.Kr,
+        .Km = self.Km,
+        .ESun = self.ESun,
+        .mie_g = self.mie_g,
     });
 
     cb.bindPipeline(self.atmosphere_sky_pipeline.pipeline);
@@ -377,8 +403,14 @@ pub fn run(self: *App) !void {
             imgui_impl.begin(self.delta_time);
 
             if (inspector.beginWindow("My window")) {
+                inspector.inspect("Movement speed", &self.camera.speed);
                 inspector.inspect("Animate", &self.animate);
                 inspector.inspect("Sun angle", &self.sun_angle);
+                inspector.inspect("Wavelengths", &self.wavelengths);
+                inspector.inspect("Sun intensity", &self.ESun);
+                inspector.inspect("Kr", &self.Kr);
+                inspector.inspect("Km", &self.Km);
+                inspector.inspect("Mie G", &self.mie_g);
             }
             inspector.endWindow();
         }

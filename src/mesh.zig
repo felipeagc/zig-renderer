@@ -154,6 +154,135 @@ pub const Mesh = struct {
         };
     }
 
+    pub fn initCubeSphere(
+        engine: *Engine,
+        cmd_pool: *rg.CmdPool,
+        radius: f32,
+        divisions: usize, // higher is more detailed
+    ) !Mesh {
+        var vertices = ArrayList(Vertex).init(engine.alloc);
+        defer vertices.deinit();
+        var indices = ArrayList(u32).init(engine.alloc);
+        defer indices.deinit();
+
+        const step: f32 = 1.0 / @intToFloat(f32, divisions);
+        const step3 = Vec3.single(step);
+
+        const origins = [6]Vec3{
+            Vec3.init(-1.0, -1.0, -1.0),
+            Vec3.init(1.0, -1.0, -1.0),
+            Vec3.init(1.0, -1.0, 1.0),
+            Vec3.init(-1.0, -1.0, 1.0),
+            Vec3.init(-1.0, 1.0, -1.0),
+            Vec3.init(-1.0, -1.0, 1.0)
+        };
+        const rights = [6]Vec3{
+            Vec3.init(2.0, 0.0, 0.0),
+            Vec3.init(0.0, 0.0, 2.0),
+            Vec3.init(-2.0, 0.0, 0.0),
+            Vec3.init(0.0, 0.0, -2.0),
+            Vec3.init(2.0, 0.0, 0.0),
+            Vec3.init(2.0, 0.0, 0.0)
+        };
+        const ups = [6]Vec3{
+            Vec3.init(0.0, 2.0, 0.0),
+            Vec3.init(0.0, 2.0, 0.0),
+            Vec3.init(0.0, 2.0, 0.0),
+            Vec3.init(0.0, 2.0, 0.0),
+            Vec3.init(0.0, 0.0, 2.0),
+            Vec3.init(0.0, 0.0, -2.0)
+        };
+
+        {
+            var face: usize = 0;
+            while (face < 6) : (face += 1) {
+                const origin = origins[face];
+                const right = rights[face];
+                const up = ups[face];
+
+                var j: usize = 0;
+                while (j < divisions + 1) : (j += 1) {
+                    const jv = Vec3.single(@intToFloat(f32, j));
+
+                    var i: usize = 0;
+                    while (i < divisions + 1) : (i += 1) {
+                        const iv = Vec3.single(@intToFloat(f32, i));
+
+                        const p: Vec3 = origin
+                            .add(step3.mul(iv.mul(right).add(jv.mul(up))))
+                            .normalize().mul(Vec3.single(radius));
+
+                        try vertices.append(Vertex{.pos = p});
+                    }
+                }
+            }
+        }
+
+        const k = divisions + 1;
+
+        {
+            var face: usize = 0;
+            while (face < 6) : (face += 1) {
+                var j: usize = 0;
+                while (j < divisions) : (j += 1) {
+                    const bottom: bool = j < (divisions / 2);
+
+                    var i: usize = 0;
+                    while (i < divisions) : (i += 1) {
+                        const left: bool = i < (divisions / 2);
+                        const a: u32 = @intCast(u32, (face * k + j) * k + i);
+                        const b: u32 = @intCast(u32, (face * k + j) * k + i + 1);
+                        const c: u32 = @intCast(u32, (face * k + j + 1) * k + i);
+                        const d: u32 = @intCast(u32, (face * k + j + 1) * k + i + 1);
+                        if ((@boolToInt(bottom) ^ @boolToInt(left)) != 0) {
+                            try indices.append(a);
+                            try indices.append(c);
+                            try indices.append(b);
+                            try indices.append(c);
+                            try indices.append(d);
+                            try indices.append(b);
+                        } else {
+                            try indices.append(a);
+                            try indices.append(c);
+                            try indices.append(d);
+                            try indices.append(a);
+                            try indices.append(d);
+                            try indices.append(b);
+                        }
+                    }
+                }
+            }
+        }
+
+        var vertices_size: usize = vertices.items.len * @sizeOf(@TypeOf(vertices.items[0]));
+        var indices_size: usize = indices.items.len * @sizeOf(@TypeOf(indices.items[0]));
+        std.debug.assert(vertices_size > 0);
+        std.debug.assert(indices_size > 0);
+
+        var vertex_buffer = engine.device.createBuffer(&rg.BufferInfo{
+            .size = vertices_size,
+            .usage = rg.BufferUsage.Vertex | rg.BufferUsage.TransferDst,
+            .memory = .Device,
+        }) orelse return error.GpuObjectCreateError;
+
+        var index_buffer = engine.device.createBuffer(&rg.BufferInfo{
+            .size = indices_size,
+            .usage = rg.BufferUsage.Index | rg.BufferUsage.TransferDst,
+            .memory = .Device,
+        }) orelse return error.GpuObjectCreateError;
+
+        engine.device.uploadBuffer(cmd_pool, vertex_buffer, 0, vertices_size, &vertices.items[0]);
+        engine.device.uploadBuffer(cmd_pool, index_buffer, 0, indices_size, &indices.items[0]);
+
+        return Mesh{
+            .vertex_buffer = vertex_buffer,
+            .index_buffer = index_buffer,
+            .index_count = indices.items.len,
+            .engine = engine,
+            .material = Material.default(engine),
+        };
+    }
+
     pub fn draw(
         self: *Mesh,
         cb: *rg.CmdBuffer,

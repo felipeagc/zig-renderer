@@ -18,23 +18,23 @@ pub fn inspect(name: [*:0]const u8, value: anytype) void {
     comptime const child_type = @typeInfo(@TypeOf(value)).Pointer.child;
     comptime const type_info = @typeInfo(child_type);
 
-    const speed = 0.1;
+    const speed = 0.01;
 
     switch (child_type) {
         bool => {
             _ = cimgui.igCheckbox(name, value);
         },
         f32 => {
-            _ = cimgui.igDragFloat(name, value, speed, 0.0, 0.0, "%.3f", 0);
+            _ = cimgui.igDragFloat(name, value, speed, 0.0, 0.0, "%.4f", 0);
         },
         Vec2 => {
-            _ = cimgui.igDragFloat2(name, &value.x, speed, 0.0, 0.0, "%.3f", 0);
+            _ = cimgui.igDragFloat2(name, &value.x, speed, 0.0, 0.0, "%.4f", 0);
         },
         Vec3 => {
-            _ = cimgui.igDragFloat3(name, &value.x, speed, 0.0, 0.0, "%.3f", 0);
+            _ = cimgui.igDragFloat3(name, &value.x, speed, 0.0, 0.0, "%.4f", 0);
         },
         Vec4 => {
-            _ = cimgui.igDragFloat4(name, &value.x, speed, 0.0, 0.0, "%.3f", 0);
+            _ = cimgui.igDragFloat4(name, &value.x, speed, 0.0, 0.0, "%.4f", 0);
         },
         else => switch (type_info) {
             .Struct => |t| {
