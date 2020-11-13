@@ -604,7 +604,7 @@ fn drawNode(
         for (mesh.primitives.items) |primitive| {
             if (model_set_optional) |model_set| {
                 std.debug.assert(transform != null);
-                var model: Mat4 = node.matrix.mul(transform.?.*);
+                var model = Mat4.mul(transform.?.*, node.matrix);
                 cb.setUniform(0, model_set, @sizeOf(@TypeOf(model)), @ptrCast(*c_void, &model));
             }
 

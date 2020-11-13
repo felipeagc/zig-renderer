@@ -368,7 +368,7 @@ fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
     cb.bindImage(4, 1, self.brdf_image);
 
     self.inner_atm_mesh.draw(cb, &Mat4.identity, 2, 3);
-    self.model.draw(cb, &Mat4.scaling(Vec3.single(5.0)), 2, 3);
+    self.model.draw(cb, &Mat4.translation(Vec3.init(0.0, world_inner_radius + 1.0, 0.0)), 2, 3);
 
     if (self.engine.imgui_impl) |*imgui_impl| {
         imgui_impl.render(cb);
