@@ -60,6 +60,7 @@ pub fn init(allocator: *Allocator) !*App {
         &rg.GraphInfo{
             .width = 0,
             .height = 0,
+            .preferred_swapchain_format = .Undefined,
 
             .user_data = @ptrCast(*c_void, self),
         });

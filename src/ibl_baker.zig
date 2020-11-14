@@ -102,6 +102,7 @@ pub const IBLBaker = struct {
 
                 .width = 0,
                 .height = 0,
+                .preferred_swapchain_format = .Undefined,
             });
 
         graph.execute();
@@ -216,6 +217,7 @@ pub const IBLBaker = struct {
 
                 .width = 0,
                 .height = 0,
+                .preferred_swapchain_format = .Undefined,
             });
 
         var m: u32 = 0;

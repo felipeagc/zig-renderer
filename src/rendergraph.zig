@@ -116,6 +116,8 @@ pub const GraphInfo = extern struct {
     width: u32,
     height: u32,
 
+    preferred_swapchain_format: Format,
+
     user_data: ?*c_void = null,
     window: ?*PlatformWindowInfo = null,
 };
@@ -123,23 +125,46 @@ pub const GraphInfo = extern struct {
 pub const Format = extern enum(c_int) {
     Undefined = 0,
 
-    Rgb8Unorm = 1,
-    Rgba8Unorm = 2,
-    R32Uint = 3,
-    R32Sfloat = 4,
-    Rg32Sfloat = 5,
-    Rgb32Sfloat = 6,
-    Rgba32Sfloat = 7,
-    Rgba16Sfloat = 8,
+    R8Unorm = 1,
+    Rg8Unorm = 2,
+    Rgb8Unorm = 3,
+    Rgba8Unorm = 4,
 
-    D32SfloatS8Uint = 9,
-    D32Sfloat = 10,
-    D24UnormS8Uint = 11,
-    D16UnormS8Uint = 12,
-    D16Unorm = 13,
+    R8Uint = 5,
+    Rg8Uint = 6,
+    Rgb8Uint = 7,
+    Rgba8Uint = 8,
 
-    Bc7Unorm = 14,
-    Bc7Srgb = 15,
+    R16Uint = 9,
+    Rg16Uint = 10,
+    Rgb16Uint = 11,
+    Rgba16Uint = 12,
+
+    R32Uint = 13,
+    Rg32Uint = 14,
+    Rgb32Uint = 15,
+    Rgba32Uint = 16,
+
+    R32Sfloat = 17,
+    Rg32Sfloat = 18,
+    Rgb32Sfloat = 19,
+    Rgba32Sfloat = 20,
+
+    Bgra8Unorm = 21,
+    Bgra8Srgb = 22,
+
+    R16Sfloat = 23,
+    Rg16Sfloat = 24,
+    Rgba16Sfloat = 25,
+
+    D32SfloatS8Uint = 26,
+    D32Sfloat = 27,
+    D24UnormS8Uint = 28,
+    D16UnormS8Uint = 29,
+    D16Unorm = 30,
+
+    Bc7Unorm = 31,
+    Bc7Srgb = 32,
     _,
 };
 
@@ -420,7 +445,7 @@ pub const ObjectType = extern enum(i32) {
 extern fn rgDeviceCreate(info: *DeviceInfo) ?*Device;
 extern fn rgDeviceDestroy(device: *Device) void;
 extern fn rgDeviceWaitIdle(device: *Device) void;
-extern fn rgDeviceGetSupportedDepthFormat(device: *Device) Format;
+extern fn rgDeviceGetSupportedDepthFormat(device: *Device, wanted_format: Format) Format;
 
 extern fn rgCmdPoolCreate(device: *Device) ?*CmdPool;
 extern fn rgCmdPoolDestroy(device: *Device, cmd_pool: *CmdPool) void;

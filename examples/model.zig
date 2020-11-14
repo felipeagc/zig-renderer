@@ -217,7 +217,7 @@ pub fn init(allocator: *Allocator) !*App {
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
-        .format = engine.device.getSupportedDepthFormat(),
+        .format = engine.device.getSupportedDepthFormat(.D32Sfloat),
     });
 
     var main_pass = graph.addPass(.Graphics, mainPassCallback);
@@ -230,6 +230,7 @@ pub fn init(allocator: *Allocator) !*App {
         &rg.GraphInfo{
             .user_data = @ptrCast(*c_void, self),
             .window = &try engine.getWindowInfo(),
+            .preferred_swapchain_format = .Bgra8Srgb,
 
             .width = window_size.width,
             .height = window_size.height,
