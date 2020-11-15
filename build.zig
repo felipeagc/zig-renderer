@@ -87,8 +87,6 @@ pub fn build(b: *Builder) !void {
     }
 
     renderer_lib.addCSourceFile(
-        "thirdparty/rendergraph/rendergraph/vk_mem_alloc.cpp", &[_][]const u8{"-w"});
-    renderer_lib.addCSourceFile(
         "thirdparty/rendergraph/rendergraph/rendergraph.c", &[_][]u8{});
     renderer_lib.addCSourceFile(
         "thirdparty/rendergraph/rendergraph/rendergraph_ext.c", &[_][]u8{});
