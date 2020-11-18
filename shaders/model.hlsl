@@ -141,32 +141,40 @@ float3 get_ibl_contribution(PBRInfo pbr_inputs)
     return diffuse + specular;
 }
 
-void vertex(
-	 in float3 pos     : POSITION,
-	 in float3 normal  : NORMAL,
-	 in float4 tangent : TANGENT,
-	 in float2 uv      : TEXCOORD0, 
-	out float4 out_pos : SV_Position,
-	out float2 out_uv  : TEXCOORD0,
-	out float3 out_normal  : NORMAL,
-	out float3 out_world_pos  : POSITION,
-	out float3x3 out_tbn : TBN_MATRIX)
+struct VsInput
 {
-    float4 loc_pos = mul(model.model, float4(pos, 1));
+    float3 pos     : POSITION;
+    float3 normal  : NORMAL;
+    float4 tangent : TANGENT;
+    float2 uv      : TEXCOORD0;
+};
+
+struct VsOutput
+{
+    float4 sv_pos    : SV_Position;
+	float2 uv        : TEXCOORD0;
+	float3 normal    : NORMAL;
+	float3 world_pos : POSITION;
+	float3x3 tbn     : TBN_MATRIX;
+};
+
+void vertex(in VsInput vs_in, out VsOutput vs_out)
+{
+    float4 loc_pos = mul(model.model, float4(vs_in.pos, 1));
 	loc_pos /= loc_pos.w;
 
-    out_world_pos = loc_pos.xyz;
-	out_uv = uv;
+    vs_out.world_pos = loc_pos.xyz;
+	vs_out.uv = vs_in.uv;
     if (material.is_normal_mapped != 0)
     {
-        float3 T = normalize(mul(model.model, float4(tangent.xyz, 0.0f)).xyz);
-        float3 N = normalize(mul(model.model, float4(normal, 0.0f)).xyz);
+        float3 T = normalize(mul(model.model, float4(vs_in.tangent.xyz, 0.0f)).xyz);
+        float3 N = normalize(mul(model.model, float4(vs_in.normal, 0.0f)).xyz);
         T = normalize(T - dot(T, N) * N); // re-orthogonalize
-        float3 B = tangent.w * cross(N, T);
-        out_tbn[0] = T;
-        out_tbn[1] = B;
-        out_tbn[2] = N;
-        out_tbn = transpose(out_tbn);
+        float3 B = vs_in.tangent.w * cross(N, T);
+        vs_out.tbn[0] = T;
+        vs_out.tbn[1] = B;
+        vs_out.tbn[2] = N;
+        vs_out.tbn = transpose(vs_out.tbn);
     }
     else
     {
@@ -174,24 +182,19 @@ void vertex(
         model3[0] = model.model[0].xyz;
         model3[1] = model.model[1].xyz;
         model3[2] = model.model[2].xyz;
-        out_normal = normalize(mul(model3, normal));
+        vs_out.normal = normalize(mul(model3, vs_in.normal));
     }
 
-    out_pos = mul(mul(camera.proj, camera.view), loc_pos);
+    vs_out.sv_pos = mul(mul(camera.proj, camera.view), loc_pos);
 }
 
-void pixel(
-	in float2 uv : TEXCOORD0,
-	in float3 normal : NORMAL,
-	in float3 world_pos : POSITION,
-    in float3x3 tbn : TBN_MATRIX,
-	out float4 out_color : SV_Target)
+float4 pixel(in VsOutput vs_out) : SV_Target
 {
     float4 albedo =
-        srgb_to_linear(albedo_texture.Sample(texture_sampler, uv)) * material.base_color;
-    float4 metallic_roughness = metallic_roughness_texture.Sample(texture_sampler, uv);
-    float occlusion = occlusion_texture.Sample(texture_sampler, uv).r;
-    float3 emissive = srgb_to_linear(emissive_texture.Sample(texture_sampler, uv)).rgb *
+        srgb_to_linear(albedo_texture.Sample(texture_sampler, vs_out.uv)) * material.base_color;
+    float4 metallic_roughness = metallic_roughness_texture.Sample(texture_sampler, vs_out.uv);
+    float occlusion = occlusion_texture.Sample(texture_sampler, vs_out.uv).r;
+    float3 emissive = srgb_to_linear(emissive_texture.Sample(texture_sampler, vs_out.uv)).rgb *
                       material.emissive.rgb;
 
     PBRInfo pbr_inputs;
@@ -216,16 +219,16 @@ void pixel(
 
     if (material.is_normal_mapped != 0)
     {
-        pbr_inputs.N = normal_texture.Sample(texture_sampler, uv).rgb;
+        pbr_inputs.N = normal_texture.Sample(texture_sampler, vs_out.uv).rgb;
         pbr_inputs.N = normalize(pbr_inputs.N * 2.0 - 1.0); // Remap from [0, 1] to [-1, 1]
-        pbr_inputs.N = normalize(mul(tbn, pbr_inputs.N));
+        pbr_inputs.N = normalize(mul(vs_out.tbn, pbr_inputs.N));
     }
     else
     {
-        pbr_inputs.N = normal;
+        pbr_inputs.N = vs_out.normal;
     }
 
-    pbr_inputs.V = normalize(camera.pos.xyz - world_pos);
+    pbr_inputs.V = normalize(camera.pos.xyz - vs_out.world_pos);
     pbr_inputs.R = reflect(pbr_inputs.V, pbr_inputs.N); // TODO: may need to flip R.y
     pbr_inputs.R.y = -pbr_inputs.R.y;
     pbr_inputs.NdotV = clamp(abs(dot(pbr_inputs.N, pbr_inputs.V)), 0.001, 1.0);
@@ -260,5 +263,5 @@ void pixel(
     Lo *= occlusion;
     Lo += emissive;
 
-	out_color = float4(Lo, albedo.a);
+    return float4(Lo, albedo.a);
 }

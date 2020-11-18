@@ -65,24 +65,26 @@ float3 palette(float t)
     return a + b * cos(6.28318 * (c * t + d));
 }
 
-void vertex(
-	in uint vertexIndex : SV_VertexID,
-	out float4 out_pos : SV_Position,
-	out float2 out_uv : TEXCOORD0)
+struct VsOutput
 {
-	out_uv = float2(float((vertexIndex << 1) & 2), float(vertexIndex & 2));
-    out_pos = float4(out_uv * 2.0 - 1.0, 0.0, 1.0);
+    float4 sv_pos : SV_Position;
+	float2 uv : TEXCOORD0;
+};
+
+VsOutput vertex(in uint vertexIndex : SV_VertexID)
+{
+    VsOutput vs_out;
+	vs_out.uv = float2(float((vertexIndex << 1) & 2), float(vertexIndex & 2));
+    vs_out.sv_pos = float4(vs_out.uv * 2.0 - 1.0, 0.0, 1.0);
+    return vs_out;
 }
 
-void pixel(
-	in float4 fragCoord : SV_Position,
-	in float2 uv : TEXCOORD0,
-	out float4 fragColor : SV_Target)
+float4 pixel(in VsOutput vs_out) : SV_Target
 {
-	float2 p = fragCoord.xy / gVariables.res.xy;
+	float2 p = vs_out.sv_pos.xy / gVariables.res.xy;
 	p.x *= (gVariables.res.x / gVariables.res.y);
 
 	float3 col = palette(pow(pattern(p), 2.0));
 
-	fragColor = float4(col, 1.0);
+	return float4(col, 1.0);
 }
