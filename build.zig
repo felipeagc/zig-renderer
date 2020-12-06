@@ -54,6 +54,7 @@ pub fn build(b: *Builder) !void {
 
     renderer_lib.linkLibC();
     renderer_lib.linkSystemLibrary("c++");
+    renderer_lib.addIncludeDir("thirdparty/rendergraph/rendergraph");
 
     if (target.getOs().tag == .linux) {
         if (options.use_wayland) {

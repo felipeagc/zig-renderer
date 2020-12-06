@@ -39,7 +39,9 @@ struct LightInfo
     float VdotH; // cos angle between view direction and half vector
 };
 
-[[vk::binding(0, 0)]] ConstantBuffer<Camera> camera;
+[[vk::binding(0, 0)]] cbuffer camera {
+    Camera camera;
+}
 
 [[vk::binding(0, 1)]] SamplerState cube_sampler;
 [[vk::binding(1, 1)]] SamplerState radiance_sampler;
@@ -47,9 +49,12 @@ struct LightInfo
 [[vk::binding(3, 1)]] TextureCube<float4> radiance_map;
 [[vk::binding(4, 1)]] Texture2D<float4> brdf_lut;
 
-[[vk::binding(0, 2)]] ConstantBuffer<Model> model;
-
-[[vk::binding(0, 3)]] ConstantBuffer<Material> material;
+[[vk::binding(0, 2)]] cbuffer model {
+    Model model;
+}
+[[vk::binding(0, 3)]] cbuffer material {
+    Material material;
+}
 [[vk::binding(1, 3)]] SamplerState texture_sampler;
 [[vk::binding(2, 3)]] Texture2D<float4> albedo_texture;
 [[vk::binding(3, 3)]] Texture2D<float4> normal_texture;

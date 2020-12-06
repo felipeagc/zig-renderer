@@ -6,14 +6,11 @@
 
 #define PI 3.1415926536
 
-struct Uniform
-{
+[[vk::binding(0, 0)]] cbuffer uniform_data {
     float4x4 mvp;
-    float roughness;
-};
-
-[[vk::binding(0, 0)]] ConstantBuffer<Uniform> uniform_data;
-[[vk::binding(1, 0)]] SamplerState cube_sampler;
+    float4x4 roughness;
+}
+[[vk::binding(1, 0)]] sampler cube_sampler;
 [[vk::binding(2, 0)]] TextureCube<float4> skybox;
 
 void vertex(
@@ -26,7 +23,7 @@ void vertex(
 {
     out_uvw = pos;
     out_uvw.y = -out_uvw.y;
-    out_pos = mul(uniform_data.mvp, float4(pos, 1.0));
+    out_pos = mul(mvp, float4(pos, 1.0));
 }
 
 void pixel(

@@ -6,14 +6,11 @@
 
 #define PI 3.1415926536
 
-struct Uniform
-{
+[[vk::binding(0, 0)]] cbuffer uniform_data {
     float4x4 mvp;
     float roughness;
-};
-
-[[vk::binding(0, 0)]] ConstantBuffer<Uniform> uniform_data;
-[[vk::binding(1, 0)]] SamplerState cube_sampler;
+}
+[[vk::binding(1, 0)]] sampler cube_sampler;
 [[vk::binding(2, 0)]] TextureCube<float4> skybox;
 
 struct VsOutput
@@ -32,7 +29,7 @@ void vertex(
 {
     out_uvw = pos;
     out_uvw.y = out_uvw.y * -1.0;
-    out_pos = mul(uniform_data.mvp, float4(pos, 1.0));
+    out_pos = mul(mvp, float4(pos, 1.0));
 }
 
 // Based omn
@@ -136,6 +133,6 @@ void pixel(
     out float4 out_color: SV_Target)
 {
     float3 N = normalize(uvw);
-    float3 col = prefilter_env_map(N, uniform_data.roughness);
+    float3 col = prefilter_env_map(N, roughness);
     out_color = float4(col, 1.0);
 }

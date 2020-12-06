@@ -20,11 +20,13 @@ pub fn Watcher(comptime V: type) type {
 
         const OsData = switch (builtin.os.tag) {
             .linux => LinuxOsData,
+            .windows => Win32OsData,
             else => @compileError("Unsupported OS"),
         };
 
         const OsItem = switch (builtin.os.tag) {
             .linux => c_int,
+            .windows => c_int,
             else => @compileError("Unsupported OS"),
         };
 
@@ -44,6 +46,8 @@ pub fn Watcher(comptime V: type) type {
             notifier_fd: c_int,
             items: AutoHashMap(c_int, Item),
         };
+
+        const Win32OsData = struct {};
 
         const Self = @This();
 
@@ -70,6 +74,7 @@ pub fn Watcher(comptime V: type) type {
                         .items = AutoHashMap(c_int, Item).init(allocator),
                     };
                 },
+                .windows => {},
                 else => @compileError("Unsupported OS"),
             }
 
@@ -93,6 +98,7 @@ pub fn Watcher(comptime V: type) type {
 
                     self.os_data.items.deinit();
                 },
+                .windows => {},
                 else => @compileError("Unsupported OS"),
             }
 
@@ -117,6 +123,7 @@ pub fn Watcher(comptime V: type) type {
                         .os_item = wd,
                     });
                 },
+                .windows => {},
                 else => @compileError("Unsupported OS"),
             }
         }
@@ -212,6 +219,7 @@ pub fn Watcher(comptime V: type) type {
                 .linux => {
                     return self.pollLinux();
                 },
+                .windows => {},
                 else => @compileError("Unsupported OS"),
             }
         }
