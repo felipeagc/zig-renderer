@@ -68,14 +68,16 @@ pub const Graph = opaque {
 
     pub const build = rgGraphBuild;
     pub const resize = rgGraphResize;
-    pub const execute = rgGraphExecute;
+    pub const beginFrame = rgGraphBeginFrame;
+    pub const endFrame = rgGraphEndFrame;
+    pub const beginPass = rgGraphBeginPass;
+    pub const endPass = rgGraphEndPass;
     pub const waitAll = rgGraphWaitAll;
 
     pub const getBuffer = rgGraphGetBuffer;
     pub const getImage = rgGraphGetImage;
 };
 pub const Flags = u32;
-pub const PassCallback = fn(*c_void, *CmdBuffer) callconv(.C) void;
 
 pub const ResourceRef = extern struct {
     index: u32
@@ -90,6 +92,11 @@ pub const WindowSystem = extern enum(u32) {
     Win32,
     X11,
     Wayland,
+};
+
+pub const Result = extern enum(u32) {
+    Success = 0,
+    ResizeNeeded = 1,
 };
 
 pub const DeviceInfo =  extern struct {
@@ -473,7 +480,7 @@ extern fn rgComputePipelineCreate(device: *Device, info: *const ComputePipelineI
 extern fn rgPipelineDestroy(device: *Device, pipeline: *Pipeline) void;
 
 extern fn rgGraphCreate() ?*Graph;
-extern fn rgGraphAddPass(graph: *Graph, type: PassType, callback: ?PassCallback) PassRef;
+extern fn rgGraphAddPass(graph: *Graph, type: PassType) PassRef;
 extern fn rgGraphAddImage(graph: *Graph, info: *const GraphImageInfo) ResourceRef;
 extern fn rgGraphAddBuffer(graph: *Graph, info: *const BufferInfo) ResourceRef;
 extern fn rgGraphAddExternalImage(graph: *Graph, image: *Image) ResourceRef;
@@ -482,7 +489,10 @@ extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: Resourc
 extern fn rgGraphBuild(graph: *Graph, device: *Device, cmd_pool: *CmdPool, info: *GraphInfo) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
 extern fn rgGraphResize(graph: *Graph, width: u32, height: u32) void;
-extern fn rgGraphExecute(graph: *Graph) void;
+extern fn rgGraphBeginFrame(graph: *Graph) Result;
+extern fn rgGraphEndFrame(graph: *Graph) void;
+extern fn rgGraphBeginPass(graph: *Graph, pass_ref: PassRef) *CmdBuffer;
+extern fn rgGraphEndPass(graph: *Graph, pass_ref: PassRef) void;
 extern fn rgGraphWaitAll(graph: *Graph) void;
 extern fn rgGraphGetBuffer(graph: *Graph, res: ResourceRef) *Buffer;
 extern fn rgGraphGetImage(graph: *Graph, res: ResourceRef) *Image;

@@ -9,6 +9,7 @@ device: *rg.Device,
 cmd_pool: *rg.CmdPool,
 pipeline: *rg.Pipeline,
 graph: *rg.Graph,
+main_pass: rg.PassRef,
 buffer: *rg.Buffer,
 array: *[32_000_000]f32,
 
@@ -52,7 +53,7 @@ pub fn init(allocator: *Allocator) !*App {
 
     var graph = rg.Graph.create() orelse return error.InitFail;
 
-    var pass = graph.addPass(.Compute, callback);
+    var main_pass = graph.addPass(.Compute);
 
     graph.build(
         device,
@@ -71,18 +72,12 @@ pub fn init(allocator: *Allocator) !*App {
         .cmd_pool = cmd_pool,
         .pipeline = pipeline,
         .graph = graph,
+        .main_pass = main_pass,
         .buffer = buffer,
         .array = array,
     };
 
     return self;
-}
-
-fn callback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self = @ptrCast(*@This(), @alignCast(@alignOf(@This()), user_data));
-    cb.bindPipeline(self.pipeline);
-    cb.bindStorageBuffer(0, 0, self.buffer, 0, 0);
-    cb.dispatch(256, 1, 1);
 }
 
 pub fn deinit(self: *App) void {
@@ -96,7 +91,15 @@ pub fn deinit(self: *App) void {
 }
 
 pub fn run(self: *App) !void {
-    self.graph.execute();
+    {
+        var cb = self.graph.beginPass(self.main_pass);
+        defer self.graph.endPass(self.main_pass);
+
+        cb.bindPipeline(self.pipeline);
+        cb.bindStorageBuffer(0, 0, self.buffer, 0, 0);
+        cb.dispatch(256, 1, 1);
+    }
+
     self.graph.waitAll();
 }
 

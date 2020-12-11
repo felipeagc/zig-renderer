@@ -67,16 +67,6 @@ pub const IBLBaker = struct {
 
         self.current_dim = 512;
 
-        const main_callback = struct {
-            fn callback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-                var ibl_baker: *IBLBaker = @ptrCast(
-                    *IBLBaker, @alignCast(@alignOf(IBLBaker), user_data));
-
-                cb.bindPipeline(ibl_baker.brdf_pipeline.pipeline);
-                cb.draw(3, 1, 0, 0);
-            }
-        }.callback;
-
         var brdf_image = self.engine.device.createImage(&rg.ImageInfo{
             .width = self.current_dim,
             .height = self.current_dim,
@@ -91,7 +81,7 @@ pub const IBLBaker = struct {
 
         var brdf_ref = graph.addExternalImage(brdf_image);
 
-        var main_pass = graph.addPass(.Graphics, main_callback);
+        var main_pass = graph.addPass(.Graphics);
         graph.passUseResource(main_pass, brdf_ref, .Undefined, .ColorAttachment);
 
         graph.build(
@@ -105,7 +95,14 @@ pub const IBLBaker = struct {
                 .preferred_swapchain_format = .Undefined,
             });
 
-        graph.execute();
+        {
+            var cb = graph.beginPass(main_pass);
+            defer graph.endPass(main_pass);
+
+            cb.bindPipeline(self.brdf_pipeline.pipeline);
+            cb.draw(3, 1, 0, 0);
+        }
+
         graph.waitAll();
 
         return brdf_image;
@@ -202,10 +199,10 @@ pub const IBLBaker = struct {
         var cubemap_ref = graph.addExternalImage(cubemap_image);
         self.current_cubemap_ref = cubemap_ref;
 
-        var layer_pass = graph.addPass(.Graphics, layerPassCallback);
+        var layer_pass = graph.addPass(.Graphics);
         graph.passUseResource(layer_pass, offscreen_ref, .Undefined, .ColorAttachment);
 
-        var transfer_pass = graph.addPass(.Transfer, transferPassCallback);
+        var transfer_pass = graph.addPass(.Transfer);
         graph.passUseResource(transfer_pass, offscreen_ref, .ColorAttachment, .TransferSrc);
         graph.passUseResource(transfer_pass, cubemap_ref, .TransferDst, .TransferDst);
 
@@ -226,7 +223,79 @@ pub const IBLBaker = struct {
             while (f < 6) : (f += 1) {
                 self.current_mip = m;
                 self.current_layer = f;
-                graph.execute();
+
+                {
+                    var cb = graph.beginPass(layer_pass);
+                    defer graph.endPass(layer_pass);
+
+                    std.debug.assert(self.current_skybox != null);
+
+                    var uniform: extern struct {
+                        mvp: Mat4,
+                        roughness: f32,
+                    } = .{
+                        .mvp = Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)
+                            .mul(direction_matrices[self.current_layer]),
+                        .roughness = @intToFloat(f32, self.current_mip)
+                            / (@intToFloat(f32, self.current_mip_count - 1)),
+                    };
+
+                    var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
+
+                    cb.setViewport(&rg.Viewport{
+                        .x = 0.0,
+                        .y = 0.0,
+                        .width = @intToFloat(f32, mip_dim),
+                        .height = @intToFloat(f32, mip_dim),
+                        .min_depth = 0.0,
+                        .max_depth = 1.0,
+                    });
+
+                    cb.setScissor(&rg.Rect2D{
+                        .offset = .{.x = 0, .y = 0,},
+                        .extent = .{.width = mip_dim, .height = mip_dim,}
+                    });
+
+                    switch (self.current_type.?) {
+                        .Irradiance => cb.bindPipeline(self.irradiance_pipeline.pipeline),
+                        .Radiance => cb.bindPipeline(self.radiance_pipeline.pipeline),
+                    }
+                    cb.setUniform(0, 0, @sizeOf(@TypeOf(uniform)), @ptrCast(*c_void, &uniform));
+                    cb.bindSampler(1, 0, self.skybox_sampler.?);
+                    cb.bindImage(2, 0, self.current_skybox.?);
+
+                    self.cube_mesh.draw(cb, null, null, null);
+                }
+
+                {
+                    var cb = graph.beginPass(transfer_pass);
+                    defer graph.endPass(transfer_pass);
+
+                    var offscreen_image = graph.getImage(offscreen_ref);
+
+                    var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
+
+                    cb.copyImageToImage(
+                        &rg.ImageCopy{
+                            // Source
+                            .image = offscreen_image,
+                            .mip_level = 0,
+                            .array_layer = 0,
+                        },
+                        &rg.ImageCopy{
+                            // Destination
+                            .image = cubemap_image,
+                            .mip_level = self.current_mip,
+                            .array_layer = self.current_layer,
+                        },
+                        rg.Extent3D{
+                            .width = mip_dim,
+                            .height = mip_dim,
+                            .depth = 1,
+                        },
+                    );
+                }
+
                 graph.waitAll();
             }
         }
@@ -242,81 +311,6 @@ pub const IBLBaker = struct {
             }, .TransferDst, .Sampled);
 
         return cubemap_image;
-    }
-
-    fn layerPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-        var self: *IBLBaker = @ptrCast(*IBLBaker, @alignCast(@alignOf(IBLBaker), user_data));
-
-        std.debug.assert(self.current_skybox != null);
-
-        var uniform: extern struct {
-            mvp: Mat4,
-            roughness: f32,
-        } = .{
-            .mvp = Mat4.perspective((std.math.pi / 2.0), 1.0, 0.1, 512.0)
-                .mul(direction_matrices[self.current_layer]),
-            .roughness = @intToFloat(f32, self.current_mip)
-                / (@intToFloat(f32, self.current_mip_count - 1)),
-        };
-
-        var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
-
-        cb.setViewport(&rg.Viewport{
-            .x = 0.0,
-            .y = 0.0,
-            .width = @intToFloat(f32, mip_dim),
-            .height = @intToFloat(f32, mip_dim),
-            .min_depth = 0.0,
-            .max_depth = 1.0,
-        });
-
-        cb.setScissor(&rg.Rect2D{
-            .offset = .{.x = 0, .y = 0,},
-            .extent = .{.width = mip_dim, .height = mip_dim,}
-        });
-
-        switch (self.current_type.?) {
-            .Irradiance => cb.bindPipeline(self.irradiance_pipeline.pipeline),
-            .Radiance => cb.bindPipeline(self.radiance_pipeline.pipeline),
-        }
-        cb.setUniform(0, 0, @sizeOf(@TypeOf(uniform)), @ptrCast(*c_void, &uniform));
-        cb.bindSampler(1, 0, self.skybox_sampler.?);
-        cb.bindImage(2, 0, self.current_skybox.?);
-
-        self.cube_mesh.draw(cb, null, null, null);
-    }
-
-    fn transferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-        var self: *IBLBaker = @ptrCast(*IBLBaker, @alignCast(@alignOf(IBLBaker), user_data));
-
-        var graph = self.current_graph.?;
-        var cubemap_ref = self.current_cubemap_ref.?;
-        var offscreen_ref = self.current_offscreen_ref.?;
-
-        var offscreen_image = graph.getImage(offscreen_ref);
-        var cubemap_image = graph.getImage(cubemap_ref);
-
-        var mip_dim: u32 = self.current_dim >> @intCast(u5, self.current_mip);
-
-        cb.copyImageToImage(
-            &rg.ImageCopy{
-                // Source
-                .image = offscreen_image,
-                .mip_level = 0,
-                .array_layer = 0,
-            },
-            &rg.ImageCopy{
-                // Destination
-                .image = cubemap_image,
-                .mip_level = self.current_mip,
-                .array_layer = self.current_layer,
-            },
-            rg.Extent3D{
-                .width = mip_dim,
-                .height = mip_dim,
-                .depth = 1,
-            },
-        );
     }
 };
 

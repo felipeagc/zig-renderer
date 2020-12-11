@@ -71,7 +71,7 @@ pub fn init(alloc: *Allocator) !*Engine {
     _ = c.glfwSetWindowContentScaleCallback(window, windowContentScaleCallbackGLFW);
 
     var device_info = rg.DeviceInfo{
-        .enable_validation = true,
+        .enable_validation = false,
         .window_system =
             if (builtin.os.tag == .windows) .Win32
             else if (options.use_wayland) .Wayland

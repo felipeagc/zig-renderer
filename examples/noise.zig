@@ -7,9 +7,12 @@ engine: *Engine,
 asset_manager: *AssetManager,
 noise_pipeline: *GraphicsPipelineAsset,
 post_pipeline: *GraphicsPipelineAsset,
+sampler: *rg.Sampler,
+
 graph: *rg.Graph,
 noise_image_res: rg.ResourceRef,
-sampler: *rg.Sampler,
+main_pass: rg.PassRef,
+backbuffer_pass: rg.PassRef,
 
 pub fn init(allocator: *Allocator) !*App {
     var self = try allocator.create(App);
@@ -39,11 +42,11 @@ pub fn init(allocator: *Allocator) !*App {
         .format = .Rgba8Unorm,
     });
 
-    var main_pass = graph.addPass(.Graphics, mainPassCallback);
+    var main_pass = graph.addPass(.Graphics);
     graph.passUseResource(main_pass, color_res, .Undefined, .ColorAttachment);
     graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
 
-    var backbuffer_pass = graph.addPass(.Graphics, backbufferPassCallback);
+    var backbuffer_pass = graph.addPass(.Graphics);
     graph.passUseResource(backbuffer_pass, color_res, .ColorAttachment, .Sampled);
 
     var window_size = engine.getWindowSize();
@@ -75,6 +78,8 @@ pub fn init(allocator: *Allocator) !*App {
         .post_pipeline = post_pipeline,
         .graph = graph,
         .noise_image_res = color_res,
+        .main_pass = main_pass,
+        .backbuffer_pass = backbuffer_pass,
         .sampler = sampler,
     };
     return self;
@@ -89,41 +94,12 @@ pub fn deinit(self: *App) void {
     self.allocator.destroy(self);
 }
 
-fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-
-    const UniformType = extern struct {
-        res: Vec2,
-        time: f32,
-    };
-
-    var window_size = self.engine.getWindowSize();
-
-    var uniform = UniformType{
-        .time = @floatCast(f32, self.engine.getTime() * 5.0),
-        .res = Vec2.init(
-            @intToFloat(f32, window_size.width),
-            @intToFloat(f32, window_size.height),
-        ),
-    };
-
-    cb.setUniform(0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
-    cb.bindPipeline(self.noise_pipeline.pipeline);
-    cb.draw(3, 1, 0, 0);
-}
-
-fn backbufferPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-
-    var noise_img = self.graph.getImage(self.noise_image_res);
-
-    cb.bindImage(0, 0, noise_img);
-    cb.bindSampler(1, 0, self.sampler);
-    cb.bindPipeline(self.post_pipeline.pipeline);
-    cb.draw(3, 1, 0, 0);
-}
-
 pub fn run(self: *App) !void {
+    {
+        var window_size = self.engine.getWindowSize();
+        self.graph.resize(window_size.width, window_size.height);
+    }
+
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
 
@@ -141,7 +117,45 @@ pub fn run(self: *App) !void {
         }
 
         self.asset_manager.refreshAssets();
-        self.graph.execute();
+
+        if (self.graph.beginFrame() == .ResizeNeeded) continue;
+        defer self.graph.endFrame();
+
+        {
+            var cb = self.graph.beginPass(self.main_pass);
+            defer self.graph.endPass(self.main_pass);
+
+            const UniformType = extern struct {
+                res: Vec2,
+                time: f32,
+            };
+
+            var window_size = self.engine.getWindowSize();
+
+            var uniform = UniformType{
+                .time = @floatCast(f32, self.engine.getTime() * 5.0),
+                .res = Vec2.init(
+                    @intToFloat(f32, window_size.width),
+                    @intToFloat(f32, window_size.height),
+                ),
+            };
+
+            cb.setUniform(0, 0, @sizeOf(UniformType), @ptrCast(*c_void, &uniform));
+            cb.bindPipeline(self.noise_pipeline.pipeline);
+            cb.draw(3, 1, 0, 0);
+        }
+
+        {
+            var cb = self.graph.beginPass(self.backbuffer_pass);
+            defer self.graph.endPass(self.backbuffer_pass);
+
+            var noise_img = self.graph.getImage(self.noise_image_res);
+
+            cb.bindImage(0, 0, noise_img);
+            cb.bindSampler(1, 0, self.sampler);
+            cb.bindPipeline(self.post_pipeline.pipeline);
+            cb.draw(3, 1, 0, 0);
+        }
     }
 }
 
@@ -153,5 +167,6 @@ pub fn main() !void {
     var app = try App.init(&gpa.allocator);
     defer app.deinit();
 
+    std.time.sleep(1_000_000_000);
     try app.run();
 }

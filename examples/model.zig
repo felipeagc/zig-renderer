@@ -9,6 +9,7 @@ asset_manager: *AssetManager,
 model_pipeline: *GraphicsPipelineAsset,
 atmosphere_sky_pipeline: *GraphicsPipelineAsset,
 graph: *rg.Graph,
+main_pass: rg.PassRef,
 
 model: *GltfAsset,
 skybox_image: *ImageAsset,
@@ -220,7 +221,7 @@ pub fn init(allocator: *Allocator) !*App {
         .format = engine.device.getSupportedDepthFormat(.D32Sfloat),
     });
 
-    var main_pass = graph.addPass(.Graphics, mainPassCallback);
+    var main_pass = graph.addPass(.Graphics);
 
     graph.passUseResource(main_pass, depth_res, .Undefined, .DepthStencilAttachment);
     var window_size = engine.getWindowSize();
@@ -276,6 +277,8 @@ pub fn init(allocator: *Allocator) !*App {
         .asset_manager = asset_manager,
 
         .graph = graph,
+        .main_pass = main_pass,
+
         .camera = .{},
         .cube_mesh = try Mesh.initCube(engine, engine.main_cmd_pool),
         .outer_atm_mesh = try Mesh.initCubeSphere(
@@ -322,62 +325,13 @@ pub fn deinit(self: *App) void {
     self.allocator.destroy(self);
 }
 
-fn mainPassCallback(user_data: *c_void, cb: *rg.CmdBuffer) callconv(.C) void {
-    var self: *App = @ptrCast(*App, @alignCast(@alignOf(App), user_data));
-
-    self.camera.update(self.engine, @floatCast(f32, self.delta_time));
-
-    if (self.animate) {
-        self.sun_angle += @floatCast(f32, self.delta_time) * 0.1;
-        self.sun_angle = @mod(self.sun_angle, std.math.pi * 2.0);
-    }
-
-    var atmosphere = Atmosphere.init(.{
-        .camera_pos = self.camera.pos,
-        .sun_pos = Vec3.init(
-            0.0,
-            sin(self.sun_angle),
-            cos(self.sun_angle),
-        ).normalize(),
-        .inner_radius = world_inner_radius,
-        .outer_radius = world_outer_radius,
-        .wavelengths = self.wavelengths,
-        .Kr = self.Kr,
-        .Km = self.Km,
-        .ESun = self.ESun,
-        .mie_g = self.mie_g,
-    });
-
-    cb.bindPipeline(self.atmosphere_sky_pipeline.pipeline);
-    cb.setUniform(0, 0,
-        @sizeOf(@TypeOf(self.camera.uniform)),
-        &self.camera.uniform);
-    cb.setUniform(1, 0,
-        @sizeOf(@TypeOf(atmosphere)),
-         &atmosphere);
-    self.outer_atm_mesh.draw(cb, null, null, null);
-
-    cb.bindPipeline(self.model_pipeline.pipeline);
-    cb.setUniform(0, 0,
-        @sizeOf(@TypeOf(self.camera.uniform)),
-        @ptrCast(*c_void, &self.camera.uniform));
-
-    cb.bindSampler(0, 1, self.irradiance_sampler);
-    cb.bindSampler(1, 1, self.radiance_sampler);
-    cb.bindImage(2, 1, self.irradiance_image);
-    cb.bindImage(3, 1, self.radiance_image);
-    cb.bindImage(4, 1, self.brdf_image);
-
-    self.inner_atm_mesh.draw(cb, &Mat4.identity, 2, 3);
-    self.model.draw(cb, &Mat4.translation(Vec3.init(0.0, world_inner_radius + 1.0, 0.0)), 2, 3);
-
-    if (self.engine.imgui_impl) |*imgui_impl| {
-        imgui_impl.render(cb);
-    }
-}
-
 pub fn run(self: *App) !void {
     while (!self.engine.shouldClose()) {
+        if (self.last_time > 0) {
+            self.delta_time = self.engine.getTime() - self.last_time;
+        }
+        self.last_time = self.engine.getTime();
+
         self.engine.pollEvents();
 
         while (self.engine.nextEvent()) |event| {
@@ -416,12 +370,63 @@ pub fn run(self: *App) !void {
             inspector.endWindow();
         }
 
-        self.graph.execute();
+        if (self.graph.beginFrame() == .ResizeNeeded) continue;
+        defer self.graph.endFrame();
 
-        if (self.last_time > 0) {
-            self.delta_time = self.engine.getTime() - self.last_time;
+        {
+            var cb = self.graph.beginPass(self.main_pass);
+            defer self.graph.endPass(self.main_pass);
+
+            self.camera.update(self.engine, @floatCast(f32, self.delta_time));
+
+            if (self.animate) {
+                self.sun_angle += @floatCast(f32, self.delta_time) * 0.1;
+                self.sun_angle = @mod(self.sun_angle, std.math.pi * 2.0);
+            }
+
+            var atmosphere = Atmosphere.init(.{
+                .camera_pos = self.camera.pos,
+                .sun_pos = Vec3.init(
+                    0.0,
+                    sin(self.sun_angle),
+                    cos(self.sun_angle),
+                ).normalize(),
+                .inner_radius = world_inner_radius,
+                .outer_radius = world_outer_radius,
+                .wavelengths = self.wavelengths,
+                .Kr = self.Kr,
+                .Km = self.Km,
+                .ESun = self.ESun,
+                .mie_g = self.mie_g,
+            });
+
+            cb.bindPipeline(self.atmosphere_sky_pipeline.pipeline);
+            cb.setUniform(0, 0,
+                @sizeOf(@TypeOf(self.camera.uniform)),
+                &self.camera.uniform);
+            cb.setUniform(1, 0,
+                @sizeOf(@TypeOf(atmosphere)),
+                &atmosphere);
+            self.outer_atm_mesh.draw(cb, null, null, null);
+
+            cb.bindPipeline(self.model_pipeline.pipeline);
+            cb.setUniform(0, 0,
+                @sizeOf(@TypeOf(self.camera.uniform)),
+                @ptrCast(*c_void, &self.camera.uniform));
+
+            cb.bindSampler(0, 1, self.irradiance_sampler);
+            cb.bindSampler(1, 1, self.radiance_sampler);
+            cb.bindImage(2, 1, self.irradiance_image);
+            cb.bindImage(3, 1, self.radiance_image);
+            cb.bindImage(4, 1, self.brdf_image);
+
+            self.inner_atm_mesh.draw(cb, &Mat4.identity, 2, 3);
+            self.model.draw(cb, &Mat4.translation(Vec3.init(0.0, world_inner_radius + 1.0, 0.0)), 2, 3);
+
+            if (self.engine.imgui_impl) |*imgui_impl| {
+                imgui_impl.render(cb);
+            }
         }
-        self.last_time = self.engine.getTime();
     }
 }
 
