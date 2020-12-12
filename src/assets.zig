@@ -83,14 +83,28 @@ pub const AssetManager = struct {
     }
 
     fn loadFileDataAlloc(self: *AssetManager, path: [*:0]const u8) ![]const u8 {
-        var file = try std.fs.cwd().openFile(mem.span(path), .{});
+        var path_slice: []const u8 = mem.span(path);
+        if (builtin.os.tag == .windows) {
+            var new_path: []u8 = try self.alloc.alloc(u8, path_slice.len);
+            _ = mem.replace(u8, path_slice, "/", "\\", new_path);
+            path_slice = new_path;
+        }
+        defer if (builtin.os.tag == .windows) {
+            self.alloc.free(path_slice);
+        };
+
+        var cwd_path = try std.fs.cwd().realpathAlloc(self.alloc, path_slice);
+        defer self.alloc.free(cwd_path);
+        std.log.info("cwd path: {}", .{cwd_path});
+
+        var file = try std.fs.cwd().openFile(path_slice, .{});
         defer file.close();
 
         var stat = try file.stat();
 
         var data = try file.reader().readAllAlloc(self.alloc, stat.size);
 
-        if (std.mem.endsWith(u8, mem.span(path), ".zst")) {
+        if (std.mem.endsWith(u8, path_slice, ".zst")) {
             std.log.info("decompressing: {}", .{path});
 
             var decompressed_data = try zstd.decompressAlloc(self.alloc, data);

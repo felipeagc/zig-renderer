@@ -166,7 +166,18 @@ fn parseGraphicsPipelineOptions(shader_source: []const u8) !rg.GraphicsPipelineI
         .fragment_entry = null,
     };
 
-    var iter = mem.split(shader_source, "\n");
+    var line_break: []const u8 = "\n";
+    for (shader_source) |c| {
+        if (c == '\r') {
+            line_break = "\r\n";
+            break;
+        }
+        if (c == '\n') {
+            break;
+        }
+    }
+
+    var iter = mem.split(shader_source, line_break);
     while (iter.next()) |line| {
         if (mem.startsWith(u8, line, "#pragma")) {
             var iter2 = mem.split(line, " ");

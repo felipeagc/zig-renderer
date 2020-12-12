@@ -20,7 +20,7 @@ fn addExample(b: *Builder, comptime name: []const u8) !void {
     exe.setBuildMode(mode);
     exe.setTarget(target);
     if (target.getOs().tag == .windows) {
-        exe.subsystem = .Windows;
+        // exe.subsystem = .Windows;
     }
 
     exe.addIncludeDir("thirdparty/glfw/include");

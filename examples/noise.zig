@@ -24,11 +24,11 @@ pub fn init(allocator: *Allocator) !*App {
     var asset_manager = try AssetManager.init(engine, .{.watch = true});
     errdefer asset_manager.deinit();
 
-    var noise_pipeline = try asset_manager.loadFile(
-        GraphicsPipelineAsset, "./shaders/noise.hlsl");
+    var noise_pipeline = try asset_manager.load(
+        GraphicsPipelineAsset, @embedFile("../shaders/noise.hlsl"));
 
-    var post_pipeline = try asset_manager.loadFile(
-        GraphicsPipelineAsset, "./shaders/post.hlsl");
+    var post_pipeline = try asset_manager.load(
+        GraphicsPipelineAsset, @embedFile("../shaders/post.hlsl"));
 
     var graph = rg.Graph.create() orelse return error.InitFail;
 
