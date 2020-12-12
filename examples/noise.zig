@@ -95,10 +95,10 @@ pub fn deinit(self: *App) void {
 }
 
 pub fn run(self: *App) !void {
-    {
-        var window_size = self.engine.getWindowSize();
-        self.graph.resize(window_size.width, window_size.height);
-    }
+    // {
+    //     var window_size = self.engine.getWindowSize();
+    //     self.graph.resize(window_size.width, window_size.height);
+    // }
 
     while (!self.engine.shouldClose()) {
         self.engine.pollEvents();
