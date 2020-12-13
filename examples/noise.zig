@@ -34,7 +34,7 @@ pub fn init(allocator: *Allocator) !*App {
 
     var depth_res = graph.addImage(&rg.GraphImageInfo{
         .aspect = rg.ImageAspect.Depth | rg.ImageAspect.Stencil,
-        .format = engine.device.getSupportedDepthFormat(.D32Sfloat),
+        .format = engine.device.getSupportedDepthFormat(.D32SfloatS8Uint),
     });
 
     var color_res = graph.addImage(&rg.GraphImageInfo{
@@ -96,7 +96,6 @@ pub fn deinit(self: *App) void {
 
 pub fn run(self: *App) !void {
     // {
-    //     var window_size = self.engine.getWindowSize();
     //     self.graph.resize(window_size.width, window_size.height);
     // }
 
@@ -118,8 +117,9 @@ pub fn run(self: *App) !void {
 
         self.asset_manager.refreshAssets();
 
-        if (self.graph.beginFrame() == .ResizeNeeded) continue;
-        defer self.graph.endFrame();
+        var window_size = self.engine.getWindowSize();
+        if (self.graph.beginFrame(window_size.width, window_size.height) == .ResizeNeeded) continue;
+        defer self.graph.endFrame(window_size.width, window_size.height);
 
         {
             var cb = self.graph.beginPass(self.main_pass);
@@ -129,8 +129,6 @@ pub fn run(self: *App) !void {
                 res: Vec2,
                 time: f32,
             };
-
-            var window_size = self.engine.getWindowSize();
 
             var uniform = UniformType{
                 .time = @floatCast(f32, self.engine.getTime() * 5.0),

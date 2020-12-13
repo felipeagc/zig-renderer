@@ -489,8 +489,8 @@ extern fn rgGraphPassUseResource(graph: *Graph, pass: PassRef, resource: Resourc
 extern fn rgGraphBuild(graph: *Graph, device: *Device, cmd_pool: *CmdPool, info: *GraphInfo) void;
 extern fn rgGraphDestroy(graph: *Graph) void;
 extern fn rgGraphResize(graph: *Graph, width: u32, height: u32) void;
-extern fn rgGraphBeginFrame(graph: *Graph) Result;
-extern fn rgGraphEndFrame(graph: *Graph) void;
+extern fn rgGraphBeginFrame(graph: *Graph, width: u32, height: u32) Result;
+extern fn rgGraphEndFrame(graph: *Graph, width: u32, height: u32) void;
 extern fn rgGraphBeginPass(graph: *Graph, pass_ref: PassRef) *CmdBuffer;
 extern fn rgGraphEndPass(graph: *Graph, pass_ref: PassRef) void;
 extern fn rgGraphWaitAll(graph: *Graph) void;

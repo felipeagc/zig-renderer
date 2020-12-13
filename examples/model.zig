@@ -370,8 +370,9 @@ pub fn run(self: *App) !void {
             inspector.endWindow();
         }
 
-        if (self.graph.beginFrame() == .ResizeNeeded) continue;
-        defer self.graph.endFrame();
+        var window_size = self.engine.getWindowSize();
+        if (self.graph.beginFrame(window_size.width, window_size.height) == .ResizeNeeded) continue;
+        defer self.graph.endFrame(window_size.width, window_size.height);
 
         {
             var cb = self.graph.beginPass(self.main_pass);
